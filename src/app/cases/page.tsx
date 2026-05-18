@@ -6,14 +6,30 @@ import { format } from "date-fns";
 export default async function CasesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   await requireUser();
-  const { status } = await searchParams;
+  const { status, q } = await searchParams;
   const filter = status === "closed" ? "closed" : status === "all" ? undefined : "open";
+  const query = q?.trim();
 
   const cases = await db.case.findMany({
-    where: filter ? { status: filter } : undefined,
+    where: {
+      ...(filter ? { status: filter } : {}),
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query } },
+              { caseNumber: { contains: query } },
+              { court: { contains: query } },
+              { practiceArea: { contains: query } },
+              { opposing: { contains: query } },
+              { description: { contains: query } },
+              { client: { name: { contains: query } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { openedAt: "desc" },
     include: { client: true },
   });
@@ -25,15 +41,45 @@ export default async function CasesPage({
         <Link className="btn-primary" href="/cases/new">New case</Link>
       </div>
 
+      <form className="flex gap-2" action="/cases" method="get">
+        {status && <input type="hidden" name="status" value={status} />}
+        <input
+          className="input"
+          name="q"
+          defaultValue={query ?? ""}
+          placeholder="Search by case title, number, client, opposing party…"
+        />
+        <button className="btn-outline" type="submit">Search</button>
+        {query && (
+          <Link className="btn-ghost" href={status ? `/cases?status=${status}` : "/cases"}>
+            Clear
+          </Link>
+        )}
+      </form>
+
       <div className="flex gap-1 text-sm">
-        <FilterLink href="/cases" label="Open" active={!status || status === "open"} />
-        <FilterLink href="/cases?status=closed" label="Closed" active={status === "closed"} />
-        <FilterLink href="/cases?status=all" label="All" active={status === "all"} />
+        <FilterLink
+          href={query ? `/cases?q=${encodeURIComponent(query)}` : "/cases"}
+          label="Open"
+          active={!status || status === "open"}
+        />
+        <FilterLink
+          href={`/cases?status=closed${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+          label="Closed"
+          active={status === "closed"}
+        />
+        <FilterLink
+          href={`/cases?status=all${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+          label="All"
+          active={status === "all"}
+        />
       </div>
 
       <div className="card divide-y divide-slate-100">
         {cases.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">No cases.</p>
+          <p className="p-6 text-sm text-slate-500">
+            {query ? `No cases match "${query}".` : "No cases."}
+          </p>
         ) : (
           cases.map((c) => (
             <Link

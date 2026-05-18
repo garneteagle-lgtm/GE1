@@ -21,9 +21,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             {[client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
           </div>
         </div>
-        <Link className="btn-primary" href={`/cases/new?clientId=${client.id}`}>
-          New case for this client
-        </Link>
+        <div className="flex gap-2">
+          <Link className="btn-outline" href={`/clients/${client.id}/edit`}>Edit</Link>
+          <Link className="btn-primary" href={`/cases/new?clientId=${client.id}`}>
+            New case for this client
+          </Link>
+        </div>
       </div>
 
       {client.address && (

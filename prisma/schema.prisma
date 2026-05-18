@@ -84,6 +84,19 @@ model Case {
   deadlines    Deadline[]
   emails       EmailMessage[]
   events       CalendarEvent[]
+  documents    Document[]
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  filename     String
+  storedName   String
+  mimeType     String?
+  size         Int
+  description  String?
+  uploadedAt   DateTime @default(now())
+  caseId       String
+  case         Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 }
 
 model Note {

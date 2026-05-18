@@ -6,7 +6,8 @@ import { formatDistanceToNowStrict, format, isPast } from "date-fns";
 export default async function Dashboard() {
   await requireUser();
 
-  const [openCases, upcomingDeadlines, openTasks, recentEmails] = await Promise.all([
+  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails] = await Promise.all([
+    db.case.count(),
     db.case.count({ where: { status: "open" } }),
     db.deadline.findMany({
       where: { dueAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
@@ -27,6 +28,36 @@ export default async function Dashboard() {
       include: { case: { include: { client: true } } },
     }),
   ]);
+
+  if (totalCases === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold">Welcome</h1>
+        <div className="card p-8">
+          <h2 className="text-lg font-semibold">Get started</h2>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+            <li>
+              <Link className="text-ink underline" href="/clients/new">Add your first client</Link>{" "}
+              — name, email, phone.
+            </li>
+            <li>
+              <Link className="text-ink underline" href="/cases/new">Create a case</Link> for that
+              client. You can attach notes, tasks, deadlines, and documents.
+            </li>
+            <li>
+              From a case, click <span className="font-medium">Sync from Gmail</span> to pull
+              recent messages to/from the client's email address.
+            </li>
+            <li>
+              Go to <Link className="text-ink underline" href="/calendar">Calendar</Link> and click
+              <span className="font-medium"> Sync from Google Calendar</span> to import upcoming
+              events, then tag any that belong to a case.
+            </li>
+          </ol>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

@@ -76,6 +76,12 @@ function emptyToNull(v: FormDataEntryValue | null) {
   return s.length === 0 ? null : s;
 }
 
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default async function CaseDetail({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
@@ -88,6 +94,7 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
       deadlines: { orderBy: { dueAt: "asc" } },
       emails: { orderBy: { sentAt: "desc" }, take: 20 },
       events: { orderBy: { startAt: "asc" }, take: 20 },
+      documents: { orderBy: { uploadedAt: "desc" } },
     },
   });
   if (!c) notFound();
@@ -116,6 +123,7 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
           >
             {c.status}
           </span>
+          <Link className="btn-outline" href={`/cases/${c.id}/edit`}>Edit</Link>
           {c.status === "open" ? (
             <form action={setStatus.bind(null, c.id, "closed")}>
               <button className="btn-outline" type="submit">Close case</button>
@@ -216,6 +224,59 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
                   {format(n.createdAt, "MMM d, yyyy h:mm a")}
                 </div>
                 <div className="whitespace-pre-wrap">{n.body}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card p-6">
+        <h2 className="mb-4 text-lg font-semibold">Documents</h2>
+        <form
+          action="/api/documents/upload"
+          method="post"
+          encType="multipart/form-data"
+          className="mb-4 flex flex-wrap items-end gap-2"
+        >
+          <input type="hidden" name="caseId" value={c.id} />
+          <div className="grow">
+            <label className="label">File (max 25MB)</label>
+            <input className="input" name="file" type="file" required />
+          </div>
+          <div className="grow">
+            <label className="label">Description</label>
+            <input className="input" name="description" placeholder="optional" />
+          </div>
+          <button className="btn-primary" type="submit">Upload</button>
+        </form>
+        {c.documents.length === 0 ? (
+          <p className="text-sm text-slate-500">No documents uploaded.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {c.documents.map((d) => (
+              <li key={d.id} className="flex items-center justify-between py-2 text-sm">
+                <div>
+                  <a
+                    href={`/api/documents/${d.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-ink hover:underline"
+                  >
+                    {d.filename}
+                  </a>
+                  <div className="text-xs text-slate-500">
+                    {formatBytes(d.size)} · {format(d.uploadedAt, "MMM d, yyyy")}
+                    {d.description && ` · ${d.description}`}
+                  </div>
+                </div>
+                <form action={`/api/documents/${d.id}/delete`} method="post">
+                  <button
+                    className="btn-ghost text-red-600 hover:bg-red-50"
+                    type="submit"
+                  >
+                    Delete
+                  </button>
+                </form>
               </li>
             ))}
           </ul>

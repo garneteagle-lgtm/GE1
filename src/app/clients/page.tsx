@@ -2,9 +2,25 @@ import Link from "next/link";
 import { requireUser } from "@/lib/guard";
 import { db } from "@/lib/db";
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   await requireUser();
+  const { q } = await searchParams;
+  const query = q?.trim();
+
   const clients = await db.client.findMany({
+    where: query
+      ? {
+          OR: [
+            { name: { contains: query } },
+            { email: { contains: query } },
+            { phone: { contains: query } },
+          ],
+        }
+      : undefined,
     orderBy: { name: "asc" },
     include: { _count: { select: { cases: true } } },
   });
@@ -16,9 +32,24 @@ export default async function ClientsPage() {
         <Link className="btn-primary" href="/clients/new">New client</Link>
       </div>
 
+      <form className="flex gap-2" action="/clients" method="get">
+        <input
+          className="input"
+          name="q"
+          defaultValue={query ?? ""}
+          placeholder="Search by name, email, or phone…"
+        />
+        <button className="btn-outline" type="submit">Search</button>
+        {query && (
+          <Link className="btn-ghost" href="/clients">Clear</Link>
+        )}
+      </form>
+
       <div className="card divide-y divide-slate-100">
         {clients.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">No clients yet.</p>
+          <p className="p-6 text-sm text-slate-500">
+            {query ? `No clients match "${query}".` : "No clients yet."}
+          </p>
         ) : (
           clients.map((c) => (
             <Link
