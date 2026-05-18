@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cases     Case[]
+}
+
+model Case {
+  id           String          @id @default(cuid())
+  title        String
+  caseNumber   String?
+  court        String?
+  practiceArea String?
+  status       String          @default("open")
+  opposing     String?
+  description  String?
+  openedAt     DateTime        @default(now())
+  closedAt     DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  clientId     String
+  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  notes        Note[]
+  tasks        Task[]
+  deadlines    Deadline[]
+  emails       EmailMessage[]
+  events       CalendarEvent[]
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  body      String
+  createdAt DateTime @default(now())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  done        Boolean   @default(false)
+  dueAt       DateTime?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  caseId      String
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Deadline {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  dueAt       DateTime
+  kind        String?
+  createdAt   DateTime @default(now())
+  caseId      String
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model EmailMessage {
+  id        String   @id @default(cuid())
+  gmailId   String   @unique
+  threadId  String?
+  fromAddr  String?
+  toAddr    String?
+  subject   String?
+  snippet   String?
+  sentAt    DateTime?
+  caseId    String?
+  case      Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model CalendarEvent {
+  id            String    @id @default(cuid())
+  googleEventId String    @unique
+  summary       String?
+  description   String?
+  location      String?
+  startAt       DateTime?
+  endAt         DateTime?
+  htmlLink      String?
+  caseId        String?
+  case          Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
