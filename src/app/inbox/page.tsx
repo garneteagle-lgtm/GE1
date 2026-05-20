@@ -58,7 +58,6 @@ export default async function InboxPage({
                   </>
                 )}
               </div>
-              {e.snippet && <div className="mt-1 text-slate-600">{e.snippet}</div>}
             </div>
           ))
         )}

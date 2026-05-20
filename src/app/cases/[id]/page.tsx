@@ -305,7 +305,6 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
                     {e.fromAddr} → {e.toAddr}
                     {e.sentAt && ` · ${format(e.sentAt, "MMM d, yyyy")}`}
                   </div>
-                  {e.snippet && <div className="mt-1 text-slate-600">{e.snippet}</div>}
                 </li>
               ))}
             </ul>

@@ -71,7 +71,6 @@ async function syncForEmail(
         fromAddr: h("From") ?? null,
         toAddr: h("To") ?? null,
         subject: h("Subject") ?? null,
-        snippet: full.data.snippet ?? null,
         sentAt: dateStr ? new Date(dateStr) : null,
         caseId,
       },
