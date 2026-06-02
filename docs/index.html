@@ -83,6 +83,18 @@
   strong{ font-weight:600; }
   .amber{ color:#a15c00; }
 
+  /* hero tagline */
+  .tagline{ font-size:clamp(20px,3vw,27px); font-weight:600; color:var(--navy);
+            letter-spacing:-.02em; margin:14px 0 0; }
+
+  /* closing team band */
+  .team{ text-align:center; margin-top:56px; }
+  .team-photo{ width:100%; max-width:540px; height:auto; border-radius:20px;
+               box-shadow:0 10px 34px rgba(0,0,0,.12); }
+  .team-tag{ font-size:clamp(20px,3vw,26px); font-weight:600; color:var(--navy);
+             letter-spacing:-.02em; margin:26px 0 2px; }
+  .team-name{ color:var(--blue); font-weight:600; margin:0 0 2px; }
+
   /* centered layout to match the centered logo */
   .hero{ text-align:center; }
   .sub{ margin:10px auto 0; }
@@ -113,6 +125,7 @@
 <div class="wrap">
   <header class="hero">
     <h1>Florida Support Calculator</h1>
+    <p class="tagline">Don&rsquo;t pay a dime more than what&rsquo;s fair.</p>
     <p class="sub">Child support (Fla. Stat. § 61.30) and durational alimony
        (§ 61.08, as amended by SB 1416). For case planning.</p>
   </header>
@@ -224,6 +237,15 @@
       <p class="note" id="a_forms"></p>
     </div>
   </section>
+
+  <footer class="team">
+    <img class="team-photo" src="team.png"
+         alt="The attorneys of Rudolph &amp; Associates LLC"
+         onerror="this.closest('.team').style.display='none'" />
+    <p class="team-tag">Don&rsquo;t pay a dime more than what&rsquo;s fair.</p>
+    <p class="team-name">The attorneys of Rudolph &amp; Associates LLC</p>
+    <p class="note">Questions about your number? Talk to our team about your specific case.</p>
+  </footer>
 </div>
 
 <script>
