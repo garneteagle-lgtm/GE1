@@ -30,6 +30,7 @@ export default async function RootLayout({
                 <Link className="btn-ghost" href="/clients">Clients</Link>
                 <Link className="btn-ghost" href="/inbox">Inbox</Link>
                 <Link className="btn-ghost" href="/calendar">Calendar</Link>
+                <Link className="btn-ghost" href="/calculator">Calculator</Link>
                 <span className="mx-2 text-slate-300">|</span>
                 <span className="text-xs text-slate-500">{session.user.email}</span>
                 <form
