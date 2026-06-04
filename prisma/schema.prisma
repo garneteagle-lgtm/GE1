@@ -85,6 +85,22 @@ model Case {
   emails       EmailMessage[]
   events       CalendarEvent[]
   documents    Document[]
+  entityLinks  CaseEntity[]
+}
+
+// Links a registry Entity to a Case as a party to be served (defendant,
+// subpoena target, etc.). A case can have several; an entity can appear in
+// several cases.
+model CaseEntity {
+  id        String   @id @default(cuid())
+  caseId    String
+  entityId  String
+  role      String? // e.g. "Defendant", "Subpoena target"
+  createdAt DateTime @default(now())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entity    Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, entityId])
 }
 
 // A business entity from Florida's official corporate registry (sunbiz.org
@@ -99,6 +115,8 @@ model Entity {
   filingType     String? // decoded, e.g. "Florida Limited Liability Co."
   feiNumber      String? // FEI/EIN
   fileDate       String? // formation filing date, as stored (MM/DD/YYYY)
+  lastTxDate     String? // date of the last filing — a recency/accuracy signal
+  officersJson   String? // JSON array of officers/directors (name, title, address)
 
   // Principal place of business
   princAddr1   String?
@@ -128,6 +146,8 @@ model Entity {
   lastSyncedAt DateTime @default(now())
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  caseLinks CaseEntity[]
 
   @@index([nameKey])
 }

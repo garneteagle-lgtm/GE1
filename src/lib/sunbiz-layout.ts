@@ -38,6 +38,7 @@ export const FIELDS = {
 
   fileDate: { start: 473, len: 8 }, // MMDDYYYY
   feiNumber: { start: 481, len: 14 },
+  lastTxDate: { start: 496, len: 8 }, // date of last filing (MMDDYYYY)
 
   raName: { start: 545, len: 42 },
   raType: { start: 587, len: 1 }, // "P" person, "C" corporation
@@ -45,6 +46,21 @@ export const FIELDS = {
   raCity: { start: 630, len: 28 },
   raState: { start: 658, len: 2 },
   raZip: { start: 660, len: 9 }, // zip+4
+} satisfies Record<string, Field>;
+
+// Up to 6 officer/director blocks, each 128 chars, starting at position 669.
+// Per-block field offsets are relative to the block start.
+const OFFICER_COUNT = 6;
+const OFFICER_START = 669;
+const OFFICER_LEN = 128;
+const OFFICER_FIELDS = {
+  title: { start: 0, len: 4 }, // title code(s), e.g. "P", "PD", "MGR"
+  type: { start: 4, len: 1 }, // "P" person, "C" corporation
+  name: { start: 5, len: 42 },
+  addr1: { start: 47, len: 42 },
+  city: { start: 89, len: 28 },
+  state: { start: 117, len: 2 },
+  zip: { start: 119, len: 9 },
 } satisfies Record<string, Field>;
 
 const FILING_TYPES: Record<string, string> = {
@@ -73,6 +89,16 @@ function formatFileDate(raw: string): string | null {
   return `${raw.slice(0, 2)}/${raw.slice(2, 4)}/${raw.slice(4)}`;
 }
 
+export type ParsedOfficer = {
+  title: string | null;
+  type: string | null;
+  name: string;
+  addr1: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+};
+
 export type ParsedEntity = {
   documentNumber: string;
   legalName: string;
@@ -81,6 +107,8 @@ export type ParsedEntity = {
   filingType: string | null;
   feiNumber: string | null;
   fileDate: string | null;
+  lastTxDate: string | null;
+  officersJson: string | null;
   princAddr1: string | null;
   princAddr2: string | null;
   princCity: string | null;
@@ -103,6 +131,33 @@ export type ParsedEntity = {
 
 const nn = (s: string): string | null => (s ? s : null);
 
+/** Slice one sub-field out of a fixed-width officer block. */
+function ofield(block: string, f: Field): string {
+  return block.slice(f.start, f.start + f.len).trim();
+}
+
+/** Parse the up-to-6 officer/director blocks. Rows with no name are dropped. */
+export function parseOfficers(line: string): ParsedOfficer[] {
+  const officers: ParsedOfficer[] = [];
+  for (let i = 0; i < OFFICER_COUNT; i++) {
+    const start = OFFICER_START - 1 + i * OFFICER_LEN;
+    const block = line.slice(start, start + OFFICER_LEN);
+    const name = ofield(block, OFFICER_FIELDS.name);
+    if (!name) continue;
+    const typeCode = ofield(block, OFFICER_FIELDS.type).toUpperCase();
+    officers.push({
+      title: nn(ofield(block, OFFICER_FIELDS.title).toUpperCase()),
+      type: typeCode === "P" ? "Person" : typeCode === "C" ? "Corporation" : nn(typeCode),
+      name,
+      addr1: nn(ofield(block, OFFICER_FIELDS.addr1)),
+      city: nn(ofield(block, OFFICER_FIELDS.city)),
+      state: nn(ofield(block, OFFICER_FIELDS.state)),
+      zip: nn(ofield(block, OFFICER_FIELDS.zip)),
+    });
+  }
+  return officers;
+}
+
 /**
  * Parse a single fixed-width cordata line into a structured record, or return
  * null if the line is blank or has no document number. Lines whose length is
@@ -118,6 +173,7 @@ export function parseRecord(line: string): ParsedEntity | null {
   const statusCode = field(line, FIELDS.status).toUpperCase();
   const filingCode = field(line, FIELDS.filingType).toUpperCase();
   const raTypeCode = field(line, FIELDS.raType).toUpperCase();
+  const officers = parseOfficers(line);
 
   return {
     documentNumber,
@@ -128,6 +184,8 @@ export function parseRecord(line: string): ParsedEntity | null {
     filingType: FILING_TYPES[filingCode] ?? nn(filingCode),
     feiNumber: nn(field(line, FIELDS.feiNumber)),
     fileDate: formatFileDate(field(line, FIELDS.fileDate)),
+    lastTxDate: formatFileDate(field(line, FIELDS.lastTxDate)),
+    officersJson: officers.length > 0 ? JSON.stringify(officers) : null,
     princAddr1: nn(field(line, FIELDS.princAddr1)),
     princAddr2: nn(field(line, FIELDS.princAddr2)),
     princCity: nn(field(line, FIELDS.princCity)),

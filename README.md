@@ -61,8 +61,24 @@ Open <http://127.0.0.1:3000>.
 
 When you need to sue or subpoena a business, you need its exact legal name and
 its **registered agent** — the person/company authorized to accept service. The
-**Entities** tab searches Florida's official corporate registry to surface that,
-formatted as a ready-to-paste service block.
+**Entities** tab searches Florida's official corporate registry and, for each
+entity, shows:
+
+- a ready-to-paste **service block** (legal name + registered agent + address),
+- the entity's **officers and directors** (for individual service or deciding
+  who to depose),
+- principal/mailing addresses, status, FEI/EIN, and filing dates, and
+- a button to **link the entity to a case** as a defendant or subpoena target.
+
+### Accuracy
+
+Stored records come from a bulk file and can lag the live registry. Because
+serving the wrong agent can void service, every entity page carries a **"Verify
+live on Sunbiz"** button that opens the authoritative record by document number
+(in a browser, which passes the Cloudflare challenge that blocks scraping), plus
+the sync date and the entity's last state filing date so you can judge freshness
+at a glance. Treat the local copy as a fast index; confirm the agent and address
+on the live record before effecting service.
 
 Rather than scraping sunbiz.org per query (it sits behind a Cloudflare
 bot-challenge that blocks automated requests), this imports Florida's official

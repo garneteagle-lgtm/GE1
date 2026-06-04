@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { format, isPast } from "date-fns";
 import { requireUser } from "@/lib/guard";
 import { db } from "@/lib/db";
+import { addressOneLine } from "@/lib/sunbiz";
 
 async function addNote(caseId: string, formData: FormData) {
   "use server";
@@ -71,6 +72,13 @@ async function deleteCase(caseId: string) {
   redirect("/cases");
 }
 
+async function unlinkEntity(linkId: string, caseId: string) {
+  "use server";
+  await requireUser();
+  await db.caseEntity.delete({ where: { id: linkId } });
+  revalidatePath(`/cases/${caseId}`);
+}
+
 function emptyToNull(v: FormDataEntryValue | null) {
   const s = String(v ?? "").trim();
   return s.length === 0 ? null : s;
@@ -95,6 +103,7 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
       emails: { orderBy: { sentAt: "desc" }, take: 20 },
       events: { orderBy: { startAt: "asc" }, take: 20 },
       documents: { orderBy: { uploadedAt: "desc" } },
+      entityLinks: { include: { entity: true }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!c) notFound();
@@ -142,6 +151,56 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
           <div className="whitespace-pre-wrap">{c.description}</div>
         </div>
       )}
+
+      <section className="card p-6">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Parties to serve</h2>
+          <Link className="btn-outline" href="/entities">Find an entity</Link>
+        </div>
+        {c.entityLinks.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No entities linked. Use{" "}
+            <Link className="underline" href="/entities">Entity lookup</Link> to find a company&apos;s
+            registered agent, then attach it here as a defendant or subpoena target.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {c.entityLinks.map((l) => {
+              const ra = addressOneLine({
+                addr1: l.entity.raAddr1,
+                city: l.entity.raCity,
+                state: l.entity.raState,
+                zip: l.entity.raZip,
+              });
+              return (
+                <li key={l.id} className="flex items-start justify-between gap-4 py-3 text-sm">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/entities/${l.entity.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {l.entity.legalName}
+                    </Link>
+                    {l.role && (
+                      <span className="badge ml-2 bg-slate-100 text-slate-600">{l.role}</span>
+                    )}
+                    <div className="text-xs text-slate-500">
+                      #{l.entity.documentNumber}
+                      {l.entity.raName ? ` · Serve: ${l.entity.raName}` : " · No agent on file"}
+                      {ra ? ` · ${ra}` : ""}
+                    </div>
+                  </div>
+                  <form action={unlinkEntity.bind(null, l.id, c.id)}>
+                    <button className="btn-ghost text-red-600 hover:bg-red-50" type="submit">
+                      Remove
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="card p-6">
