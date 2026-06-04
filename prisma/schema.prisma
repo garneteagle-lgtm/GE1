@@ -87,6 +87,51 @@ model Case {
   documents    Document[]
 }
 
+// A business entity from Florida's official corporate registry (sunbiz.org
+// "cordata" bulk data). Stored locally so we can look up who/where to serve
+// when suing or subpoenaing the entity, without any per-query network call.
+model Entity {
+  id             String   @id @default(cuid())
+  documentNumber String   @unique // FL document/registration number (6 or 12 chars)
+  legalName      String
+  nameKey        String // upper-cased legalName, for case-insensitive search/sort
+  status         String? // "Active" / "Inactive"
+  filingType     String? // decoded, e.g. "Florida Limited Liability Co."
+  feiNumber      String? // FEI/EIN
+  fileDate       String? // formation filing date, as stored (MM/DD/YYYY)
+
+  // Principal place of business
+  princAddr1   String?
+  princAddr2   String?
+  princCity    String?
+  princState   String?
+  princZip     String?
+  princCountry String?
+
+  // Mailing address
+  mailAddr1   String?
+  mailAddr2   String?
+  mailCity    String?
+  mailState   String?
+  mailZip     String?
+  mailCountry String?
+
+  // Registered agent — the person/entity to serve with process
+  raName  String?
+  raType  String? // "Person" / "Corporation"
+  raAddr1 String?
+  raCity  String?
+  raState String?
+  raZip   String?
+
+  source       String   @default("FL-SFTP") // provenance of the record
+  lastSyncedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([nameKey])
+}
+
 model Document {
   id           String   @id @default(cuid())
   filename     String

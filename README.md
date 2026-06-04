@@ -6,6 +6,7 @@ A small case management web app for a solo lawyer.
 - Google sign-in (Auth.js v5)
 - Pulls related messages from Gmail by client email (read-only)
 - Pulls upcoming events from Google Calendar (read-only); link any event to a case
+- **Entity lookup** for service of process — search Florida's official corporate registry locally to find who/where to serve when suing or subpoenaing a company
 
 Stack: Next.js 15 (App Router) · TypeScript · Tailwind · Prisma · SQLite.
 
@@ -56,13 +57,62 @@ Open <http://127.0.0.1:3000>.
 - **Documents**: uploaded files live encrypted in `./storage/documents/` on disk. Max 25MB per file.
 - **Database**: SQLite file at `./dev.db`. Back it up by copying the file (along with `.env`, since the encryption key lives there).
 
+## Entity lookup (service of process)
+
+When you need to sue or subpoena a business, you need its exact legal name and
+its **registered agent** — the person/company authorized to accept service. The
+**Entities** tab searches Florida's official corporate registry to surface that,
+formatted as a ready-to-paste service block.
+
+Rather than scraping sunbiz.org per query (it sits behind a Cloudflare
+bot-challenge that blocks automated requests), this imports Florida's official
+**bulk data download** into your local database and searches it offline. After a
+one-time load, lookups are instant and require no network call.
+
+### Loading the data
+
+The Florida Division of Corporations publishes the full corporate file
+(`cordata.zip`) plus small daily update files over a free public SFTP server:
+
+```
+Host: sftp.floridados.gov   User: Public   Pass: PubAccess1845!
+```
+
+**Option A — let the app fetch it:**
+
+```bash
+npm run sunbiz:import -- --sftp --fresh        # full quarterly file (large, do once)
+npm run sunbiz:import -- --sftp --daily 20260603   # a daily update file
+```
+
+**Option B — download it yourself** (any SFTP client or a browser) and import the
+file:
+
+```bash
+npm run sunbiz:import -- ./cordata.zip --fresh     # .zip or unzipped .txt both work
+```
+
+Useful flags: `--fresh` (wipe then fast bulk-insert — use for the full file),
+`--active-only` (skip inactive entities), `--dry-run` (parse and print the first
+few records without writing — handy to sanity-check the layout).
+
+Refresh by importing the daily files (fast, upserts) or re-running the quarterly
+with `--fresh`. The fixed-width record layout lives in
+`src/lib/sunbiz-layout.ts`, mirroring Florida's published
+[file definition](https://dos.sunbiz.org/data-definitions/cor.html) — the only
+place to edit if the state ever changes the format.
+
+> Coverage is Florida only for now, and bulk data can lag the live record by up
+> to a day (quarterly) — always confirm the agent and address on sunbiz.org
+> before effecting service.
+
 ## Security
 
 This app is built for solo use with confidential client data. Here's what is and isn't protected, and what you need to do.
 
 ### What the app does for you
 
-- **Local only.** The server binds to `127.0.0.1`; nothing listens on your LAN. Your data is never sent anywhere except to Google (and only the read-only Gmail/Calendar endpoints).
+- **Local only.** The server binds to `127.0.0.1`; nothing listens on your LAN. The app reaches the network in exactly two places, and **never sends your client data anywhere**: read-only Gmail/Calendar (to Google), and the entity importer downloading Florida's *public* corporate dataset from the state SFTP server. Entity lookups themselves run entirely against your local database — no per-query network call.
 - **Read-only Google access.** The app can read Gmail/Calendar; it cannot send mail or modify your calendar.
 - **OAuth tokens encrypted at rest.** The Google access/refresh tokens stored in `dev.db` are AES-256-GCM encrypted with a key derived from `AUTH_SECRET`. Someone with just `dev.db` cannot use them.
 - **Documents encrypted at rest.** Uploaded files are AES-256-GCM encrypted before being written to disk. Filenames on disk are random; the original filename only appears in the (encrypted-token-protected) DB.

@@ -28,6 +28,7 @@ export default async function RootLayout({
                 <Link className="btn-ghost" href="/">Dashboard</Link>
                 <Link className="btn-ghost" href="/cases">Cases</Link>
                 <Link className="btn-ghost" href="/clients">Clients</Link>
+                <Link className="btn-ghost" href="/entities">Entities</Link>
                 <Link className="btn-ghost" href="/inbox">Inbox</Link>
                 <Link className="btn-ghost" href="/calendar">Calendar</Link>
                 <span className="mx-2 text-slate-300">|</span>
