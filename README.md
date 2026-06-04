@@ -10,6 +10,10 @@ A small case management web app for a solo lawyer.
 
 Stack: Next.js 15 (App Router) · TypeScript · Tailwind · Prisma · SQLite.
 
+> **Just want to run it and test it?** See **[QUICKSTART.md](QUICKSTART.md)** for
+> a step-by-step setup (Google sign-in, loading Florida data, trying the entity
+> lookup). The sections below are reference.
+
 ## Setup
 
 ### 1. Google OAuth credentials
