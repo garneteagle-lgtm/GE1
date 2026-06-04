@@ -6,7 +6,8 @@ import { formatDistanceToNowStrict, format, isPast } from "date-fns";
 export default async function Dashboard() {
   await requireUser();
 
-  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails] = await Promise.all([
+  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails, entityAgg] =
+    await Promise.all([
     db.case.count(),
     db.case.count({ where: { status: "open" } }),
     db.deadline.findMany({
@@ -27,6 +28,7 @@ export default async function Dashboard() {
       take: 5,
       include: { case: { include: { client: true } } },
     }),
+    db.entity.aggregate({ _count: true, _max: { lastSyncedAt: true } }),
   ]);
 
   if (totalCases === 0) {
@@ -74,6 +76,8 @@ export default async function Dashboard() {
         <Stat label="Upcoming deadlines" value={upcomingDeadlines.length} href="#deadlines" />
         <Stat label="Open tasks" value={openTasks.length} href="#tasks" />
       </div>
+
+      <EntityDataCard count={entityAgg._count} lastSynced={entityAgg._max.lastSyncedAt} />
 
       <section id="deadlines" className="card p-6">
         <div className="mb-4 flex items-center justify-between">
@@ -157,6 +161,48 @@ export default async function Dashboard() {
         </section>
       )}
     </div>
+  );
+}
+
+function EntityDataCard({ count, lastSynced }: { count: number; lastSynced: Date | null }) {
+  if (count === 0 || !lastSynced) {
+    return (
+      <Link
+        href="/entities"
+        className="card flex items-center justify-between p-4 hover:bg-slate-50"
+      >
+        <div className="text-sm">
+          <div className="font-medium">Florida entity data not loaded</div>
+          <div className="text-xs text-slate-500">
+            Load the registry to look up registered agents for service of process.
+          </div>
+        </div>
+        <span className="btn-outline shrink-0">Set up</span>
+      </Link>
+    );
+  }
+
+  const ageDays = Math.floor((Date.now() - lastSynced.getTime()) / (24 * 60 * 60 * 1000));
+  const stale = ageDays >= 7;
+
+  return (
+    <Link
+      href="/entities"
+      className={`card flex items-center justify-between p-4 hover:bg-slate-50 ${
+        stale ? "border-amber-200 bg-amber-50" : ""
+      }`}
+    >
+      <div className="text-sm">
+        <div className="font-medium">
+          Florida entity data · {count.toLocaleString()} records
+        </div>
+        <div className={`text-xs ${stale ? "text-amber-800" : "text-slate-500"}`}>
+          Last synced {formatDistanceToNowStrict(lastSynced, { addSuffix: true })}
+          {stale ? " — import the latest daily file to refresh before relying on it." : "."}
+        </div>
+      </div>
+      <span className="btn-outline shrink-0">Look up</span>
+    </Link>
   );
 }
 
