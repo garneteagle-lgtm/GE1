@@ -1,0 +1,38 @@
+name: Build Windows desktop app
+
+# Builds the double-click Windows installer. Run it from the GitHub "Actions"
+# tab (Run workflow), or it runs automatically when a version tag is pushed.
+# The finished installer is attached to the run as a downloadable artifact.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      # next build is fully dynamic (no DB access at build time); a placeholder
+      # URL just satisfies anything that reads the env.
+      DATABASE_URL: "file:./build.db"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run desktop:dist
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: CaseManager-Windows-Installer
+          path: dist-desktop/*.exe
+          if-no-files-found: error

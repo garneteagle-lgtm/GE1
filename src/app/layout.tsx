@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
+import { DESKTOP } from "@/lib/guard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = DESKTOP ? null : await auth();
+  const signedIn = DESKTOP || !!session?.user;
 
   return (
     <html lang="en">
@@ -23,24 +25,29 @@ export default async function RootLayout({
             <Link href="/" className="text-lg font-semibold tracking-tight">
               Case Manager
             </Link>
-            {session?.user ? (
+            {signedIn ? (
               <nav className="flex items-center gap-1 text-sm">
                 <Link className="btn-ghost" href="/">Dashboard</Link>
                 <Link className="btn-ghost" href="/cases">Cases</Link>
                 <Link className="btn-ghost" href="/clients">Clients</Link>
                 <Link className="btn-ghost" href="/entities">Entities</Link>
-                <Link className="btn-ghost" href="/inbox">Inbox</Link>
-                <Link className="btn-ghost" href="/calendar">Calendar</Link>
-                <span className="mx-2 text-slate-300">|</span>
-                <span className="text-xs text-slate-500">{session.user.email}</span>
-                <form
-                  action={async () => {
-                    "use server";
-                    await signOut({ redirectTo: "/signin" });
-                  }}
-                >
-                  <button className="btn-ghost" type="submit">Sign out</button>
-                </form>
+                {/* Inbox & Calendar need Google sign-in, which the desktop app skips. */}
+                {!DESKTOP && (
+                  <>
+                    <Link className="btn-ghost" href="/inbox">Inbox</Link>
+                    <Link className="btn-ghost" href="/calendar">Calendar</Link>
+                    <span className="mx-2 text-slate-300">|</span>
+                    <span className="text-xs text-slate-500">{session?.user?.email}</span>
+                    <form
+                      action={async () => {
+                        "use server";
+                        await signOut({ redirectTo: "/signin" });
+                      }}
+                    >
+                      <button className="btn-ghost" type="submit">Sign out</button>
+                    </form>
+                  </>
+                )}
               </nav>
             ) : (
               <Link className="btn-outline" href="/signin">Sign in</Link>

@@ -1,0 +1,33 @@
+appId: com.casemanager.desktop
+productName: Case Manager
+copyright: ""
+
+# Plain files on disk (no asar) so the standalone Node server and the Prisma
+# engine can be forked/loaded normally.
+asar: false
+
+directories:
+  output: dist-desktop
+  buildResources: build
+
+files:
+  - electron/**/*
+  - .next/standalone/**/*
+  - package.json
+
+extraResources:
+  - from: resources/template.db
+    to: template.db
+
+win:
+  target:
+    - nsis
+  artifactName: CaseManager-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Case Manager

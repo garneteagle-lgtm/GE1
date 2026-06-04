@@ -2,6 +2,7 @@
   "name": "case-manager",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -H 127.0.0.1",
     "build": "next build",
@@ -10,6 +11,9 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "sunbiz:import": "tsx scripts/import-sunbiz.ts",
+    "desktop:template": "cross-env DATABASE_URL=file:../resources/template.db prisma db push --skip-generate --accept-data-loss",
+    "desktop:prepare": "npm run desktop:template && next build && node scripts/desktop-postbuild.mjs",
+    "desktop:dist": "npm run desktop:prepare && electron-builder --win nsis --publish never",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -28,6 +32,9 @@
   "devDependencies": {
     "@types/ssh2-sftp-client": "^9.0.4",
     "@types/unzipper": "^0.10.10",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "tsx": "^4.19.2",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",

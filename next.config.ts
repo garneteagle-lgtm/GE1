@@ -22,6 +22,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Produce a self-contained server bundle (.next/standalone) that the Windows
+  // desktop build (Electron) launches directly. Harmless for normal web use.
+  output: "standalone",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
