@@ -2,6 +2,8 @@
   "name": "case-manager",
   "version": "0.1.0",
   "private": true,
+  "description": "Case management for a solo lawyer, with Florida entity lookup for service of process.",
+  "author": "Case Manager",
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -H 127.0.0.1",

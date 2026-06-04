@@ -8,6 +8,10 @@ on:
   push:
     tags:
       - "v*"
+    # Temporary: build on pushes to the development branch while we get the
+    # Windows packaging working. Remove once the build is green.
+    branches:
+      - claude/ecstatic-goodall-ie2ke
 
 jobs:
   build:
