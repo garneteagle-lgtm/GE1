@@ -19,6 +19,7 @@ async function updateCase(caseId: string, formData: FormData) {
       practiceArea: emptyToNull(formData.get("practiceArea")),
       opposing: emptyToNull(formData.get("opposing")),
       description: emptyToNull(formData.get("description")),
+      rate: emptyToFloat(formData.get("rate")),
     },
   });
   redirect(`/cases/${caseId}`);
@@ -27,6 +28,13 @@ async function updateCase(caseId: string, formData: FormData) {
 function emptyToNull(v: FormDataEntryValue | null) {
   const s = String(v ?? "").trim();
   return s.length === 0 ? null : s;
+}
+
+function emptyToFloat(v: FormDataEntryValue | null) {
+  const s = String(v ?? "").trim();
+  if (s.length === 0) return null;
+  const n = parseFloat(s);
+  return isFinite(n) && n >= 0 ? n : null;
 }
 
 export default async function EditCasePage({ params }: { params: Promise<{ id: string }> }) {
@@ -73,9 +81,23 @@ export default async function EditCasePage({ params }: { params: Promise<{ id: s
           <label className="label">Court</label>
           <input className="input" name="court" defaultValue={c.court ?? ""} />
         </div>
-        <div>
-          <label className="label">Opposing party</label>
-          <input className="input" name="opposing" defaultValue={c.opposing ?? ""} />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Opposing party</label>
+            <input className="input" name="opposing" defaultValue={c.opposing ?? ""} />
+          </div>
+          <div>
+            <label className="label">Hourly rate ($)</label>
+            <input
+              className="input"
+              name="rate"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={c.rate ?? ""}
+              placeholder="Defaults to client rate"
+            />
+          </div>
         </div>
         <div>
           <label className="label">Description</label>

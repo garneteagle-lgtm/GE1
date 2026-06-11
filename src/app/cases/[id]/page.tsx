@@ -4,6 +4,15 @@ import { revalidatePath } from "next/cache";
 import { format, isPast } from "date-fns";
 import { requireUser } from "@/lib/guard";
 import { db } from "@/lib/db";
+import { startTimer } from "@/app/timer-actions";
+import {
+  billableHours,
+  entryAmount,
+  formatHours,
+  formatMoney,
+  hoursToMinutes,
+  summarize,
+} from "@/lib/billing";
 
 async function addNote(caseId: string, formData: FormData) {
   "use server";
@@ -71,6 +80,47 @@ async function deleteCase(caseId: string) {
   redirect("/cases");
 }
 
+async function addTimeEntry(caseId: string, fallbackRate: number, formData: FormData) {
+  "use server";
+  await requireUser();
+  const description = String(formData.get("description") ?? "").trim();
+  const minutes = hoursToMinutes(String(formData.get("hours") ?? ""));
+  if (!description || minutes <= 0) return;
+  const dateStr = String(formData.get("workedAt") ?? "").trim();
+  const rateStr = String(formData.get("rate") ?? "").trim();
+  const rate = rateStr ? Math.max(0, parseFloat(rateStr)) : fallbackRate;
+  await db.timeEntry.create({
+    data: {
+      caseId,
+      description,
+      minutes,
+      rate: isFinite(rate) ? rate : 0,
+      billable: formData.get("billable") !== "off",
+      workedAt: dateStr ? new Date(dateStr) : new Date(),
+    },
+  });
+  revalidatePath(`/cases/${caseId}`);
+}
+
+async function toggleEntryBilled(entryId: string, caseId: string) {
+  "use server";
+  await requireUser();
+  const e = await db.timeEntry.findUnique({ where: { id: entryId } });
+  if (!e) return;
+  await db.timeEntry.update({
+    where: { id: entryId },
+    data: { billed: !e.billed, billedAt: !e.billed ? new Date() : null },
+  });
+  revalidatePath(`/cases/${caseId}`);
+}
+
+async function deleteTimeEntry(entryId: string, caseId: string) {
+  "use server";
+  await requireUser();
+  await db.timeEntry.delete({ where: { id: entryId } });
+  revalidatePath(`/cases/${caseId}`);
+}
+
 function emptyToNull(v: FormDataEntryValue | null) {
   const s = String(v ?? "").trim();
   return s.length === 0 ? null : s;
@@ -95,9 +145,15 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
       emails: { orderBy: { sentAt: "desc" }, take: 20 },
       events: { orderBy: { startAt: "asc" }, take: 20 },
       documents: { orderBy: { uploadedAt: "desc" } },
+      timeEntries: { orderBy: { workedAt: "desc" } },
     },
   });
   if (!c) notFound();
+
+  const savedEntries = c.timeEntries.filter((e) => !e.running);
+  const totals = summarize(savedEntries);
+  const effectiveRate = c.rate ?? c.client.defaultRate ?? 0;
+  const today = format(new Date(), "yyyy-MM-dd");
 
   return (
     <div className="space-y-6">
@@ -142,6 +198,136 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
           <div className="whitespace-pre-wrap">{c.description}</div>
         </div>
       )}
+
+      <section className="card p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Time &amp; billing</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">
+              Rate:{" "}
+              {effectiveRate > 0 ? (
+                <span className="font-medium text-slate-700">{formatMoney(effectiveRate)}/hr</span>
+              ) : (
+                <Link href={`/cases/${c.id}/edit`} className="text-ink underline">
+                  set a rate
+                </Link>
+              )}
+            </span>
+            <Link className="btn-outline" href={`/billing/${c.id}`}>
+              Statement
+            </Link>
+            <form action={startTimer.bind(null, c.id)}>
+              <button className="btn-primary" type="submit">
+                ▶ Start timer
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="mb-4 grid grid-cols-3 gap-3 text-center">
+          <div className="rounded-md bg-amber-50 p-3">
+            <div className="text-xs uppercase tracking-wide text-amber-700">Unbilled</div>
+            <div className="text-xl font-semibold text-amber-900">
+              {formatMoney(totals.unbilledAmount)}
+            </div>
+          </div>
+          <div className="rounded-md bg-emerald-50 p-3">
+            <div className="text-xs uppercase tracking-wide text-emerald-700">Billed</div>
+            <div className="text-xl font-semibold text-emerald-900">
+              {formatMoney(totals.billedAmount)}
+            </div>
+          </div>
+          <div className="rounded-md bg-slate-50 p-3">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Hours logged</div>
+            <div className="text-xl font-semibold text-slate-800">
+              {billableHours(totals.totalMinutes).toFixed(1)}
+            </div>
+          </div>
+        </div>
+
+        <form
+          action={addTimeEntry.bind(null, c.id, effectiveRate)}
+          className="mb-4 flex flex-wrap items-end gap-2 rounded-md bg-slate-50 p-3"
+        >
+          <div className="grow basis-64">
+            <label className="label">Work done</label>
+            <input className="input" name="description" placeholder="Drafted settlement proposal…" required />
+          </div>
+          <div>
+            <label className="label">Date</label>
+            <input className="input" name="workedAt" type="date" defaultValue={today} />
+          </div>
+          <div className="w-24">
+            <label className="label">Hours</label>
+            <input className="input" name="hours" type="number" step="0.1" min="0" placeholder="0.5" required />
+          </div>
+          <div className="w-28">
+            <label className="label">Rate $/hr</label>
+            <input
+              className="input"
+              name="rate"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={effectiveRate > 0 ? effectiveRate : undefined}
+              placeholder="350"
+            />
+          </div>
+          <label className="flex items-center gap-1 pb-2 text-xs text-slate-600">
+            <input type="checkbox" name="billable" defaultChecked /> Billable
+          </label>
+          <button className="btn-primary" type="submit">
+            Log time
+          </button>
+        </form>
+
+        {savedEntries.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No time logged yet. Start the timer when you begin work, or log it after the fact above.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {savedEntries.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {e.description || <span className="text-slate-400">(no description)</span>}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {format(e.workedAt, "MMM d, yyyy")} · {formatHours(e.minutes)}
+                    {e.rate > 0 && ` @ ${formatMoney(e.rate)}/hr`}
+                    {!e.billable && " · non-billable"}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="tabular-nums font-medium">
+                    {e.billable ? formatMoney(entryAmount(e.minutes, e.rate)) : "—"}
+                  </span>
+                  {e.billable && (
+                    <form action={toggleEntryBilled.bind(null, e.id, c.id)}>
+                      <button
+                        type="submit"
+                        className={`badge ${
+                          e.billed
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        }`}
+                      >
+                        {e.billed ? "billed" : "unbilled"}
+                      </button>
+                    </form>
+                  )}
+                  <form action={deleteTimeEntry.bind(null, e.id, c.id)}>
+                    <button className="btn-ghost px-2 py-1 text-red-600 hover:bg-red-50" type="submit" aria-label="delete entry">
+                      ✕
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="card p-6">

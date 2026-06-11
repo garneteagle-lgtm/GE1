@@ -16,6 +16,7 @@ async function updateClient(clientId: string, formData: FormData) {
       phone: emptyToNull(formData.get("phone")),
       address: emptyToNull(formData.get("address")),
       notes: emptyToNull(formData.get("notes")),
+      defaultRate: emptyToFloat(formData.get("defaultRate")),
     },
   });
   redirect(`/clients/${clientId}`);
@@ -31,6 +32,13 @@ async function deleteClient(clientId: string) {
 function emptyToNull(v: FormDataEntryValue | null) {
   const s = String(v ?? "").trim();
   return s.length === 0 ? null : s;
+}
+
+function emptyToFloat(v: FormDataEntryValue | null) {
+  const s = String(v ?? "").trim();
+  if (s.length === 0) return null;
+  const n = parseFloat(s);
+  return isFinite(n) && n >= 0 ? n : null;
 }
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,9 +68,23 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
             <input className="input" name="phone" defaultValue={client.phone ?? ""} />
           </div>
         </div>
-        <div>
-          <label className="label">Address</label>
-          <input className="input" name="address" defaultValue={client.address ?? ""} />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Address</label>
+            <input className="input" name="address" defaultValue={client.address ?? ""} />
+          </div>
+          <div>
+            <label className="label">Default hourly rate ($)</label>
+            <input
+              className="input"
+              name="defaultRate"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={client.defaultRate ?? ""}
+              placeholder="350"
+            />
+          </div>
         </div>
         <div>
           <label className="label">Notes</label>

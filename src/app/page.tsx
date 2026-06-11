@@ -2,11 +2,12 @@ import Link from "next/link";
 import { requireUser } from "@/lib/guard";
 import { db } from "@/lib/db";
 import { formatDistanceToNowStrict, format, isPast } from "date-fns";
+import { formatMoney, summarize } from "@/lib/billing";
 
 export default async function Dashboard() {
   await requireUser();
 
-  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails] = await Promise.all([
+  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails, unbilledEntries] = await Promise.all([
     db.case.count(),
     db.case.count({ where: { status: "open" } }),
     db.deadline.findMany({
@@ -27,7 +28,13 @@ export default async function Dashboard() {
       take: 5,
       include: { case: { include: { client: true } } },
     }),
+    db.timeEntry.findMany({
+      where: { running: false, billable: true, billed: false },
+      select: { minutes: true, rate: true, billable: true, billed: true },
+    }),
   ]);
+
+  const unbilled = summarize(unbilledEntries).unbilledAmount;
 
   if (totalCases === 0) {
     return (
@@ -69,10 +76,11 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Open cases" value={openCases} href="/cases" />
         <Stat label="Upcoming deadlines" value={upcomingDeadlines.length} href="#deadlines" />
         <Stat label="Open tasks" value={openTasks.length} href="#tasks" />
+        <Stat label="Unbilled" value={formatMoney(unbilled)} href="/billing" />
       </div>
 
       <section id="deadlines" className="card p-6">
@@ -160,7 +168,7 @@ export default async function Dashboard() {
   );
 }
 
-function Stat({ label, value, href }: { label: string; value: number; href: string }) {
+function Stat({ label, value, href }: { label: string; value: number | string; href: string }) {
   return (
     <Link href={href} className="card flex flex-col gap-1 p-4 hover:bg-slate-50">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>

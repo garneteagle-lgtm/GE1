@@ -14,6 +14,7 @@ async function createClient(formData: FormData) {
       phone: emptyToNull(formData.get("phone")),
       address: emptyToNull(formData.get("address")),
       notes: emptyToNull(formData.get("notes")),
+      defaultRate: emptyToFloat(formData.get("defaultRate")),
     },
   });
   redirect(`/clients/${client.id}`);
@@ -22,6 +23,13 @@ async function createClient(formData: FormData) {
 function emptyToNull(v: FormDataEntryValue | null) {
   const s = String(v ?? "").trim();
   return s.length === 0 ? null : s;
+}
+
+function emptyToFloat(v: FormDataEntryValue | null) {
+  const s = String(v ?? "").trim();
+  if (s.length === 0) return null;
+  const n = parseFloat(s);
+  return isFinite(n) && n >= 0 ? n : null;
 }
 
 export default async function NewClientPage() {
@@ -44,9 +52,15 @@ export default async function NewClientPage() {
             <input className="input" name="phone" />
           </div>
         </div>
-        <div>
-          <label className="label">Address</label>
-          <input className="input" name="address" />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Address</label>
+            <input className="input" name="address" />
+          </div>
+          <div>
+            <label className="label">Default hourly rate ($)</label>
+            <input className="input" name="defaultRate" type="number" step="1" min="0" placeholder="350" />
+          </div>
         </div>
         <div>
           <label className="label">Notes</label>

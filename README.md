@@ -3,6 +3,7 @@
 A small case management web app for a solo lawyer.
 
 - Clients, cases, notes, tasks, deadlines, document uploads
+- **Billable hours**: one-click live timer, manual time entry, per-case totals, and printable client statements
 - Google sign-in (Auth.js v5)
 - Pulls related messages from Gmail by client email (read-only)
 - Pulls upcoming events from Google Calendar (read-only); link any event to a case
@@ -51,6 +52,7 @@ Open <http://127.0.0.1:3000>.
 
 ## Usage notes
 
+- **Billable hours**: set a default hourly rate on a client (and optionally override it per case). On any case, hit **Start timer** when you begin work — a banner ticks at the top of every page; click **Stop & save**, type what you did, and it's logged. Or log time after the fact with the manual form. Time is billed in tenths of an hour (rounded up, 6-minute minimum), the standard for legal billing. The **Billing** page shows unbilled totals across the firm; each case has a printable **Statement** you can save as a PDF and mark as billed once sent.
 - **Gmail sync**: each case has a "Sync from Gmail" button. It searches your inbox for messages to/from the client's email address over the last year and links them to the case. Only headers (subject, from, to, date) are stored locally — the message body is never saved.
 - **Calendar sync**: the Calendar page fetches your next 90 days of events. You assign each event to a case with the dropdown.
 - **Documents**: uploaded files live encrypted in `./storage/documents/` on disk. Max 25MB per file.

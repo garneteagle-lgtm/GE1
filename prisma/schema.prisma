@@ -53,15 +53,16 @@ model VerificationToken {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  address   String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  cases     Case[]
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  notes       String?
+  defaultRate Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cases       Case[]
 }
 
 model Case {
@@ -73,6 +74,7 @@ model Case {
   status       String          @default("open")
   opposing     String?
   description  String?
+  rate         Float?
   openedAt     DateTime        @default(now())
   closedAt     DateTime?
   createdAt    DateTime        @default(now())
@@ -85,6 +87,27 @@ model Case {
   emails       EmailMessage[]
   events       CalendarEvent[]
   documents    Document[]
+  timeEntries  TimeEntry[]
+}
+
+model TimeEntry {
+  id          String    @id @default(cuid())
+  description String    @default("")
+  workedAt    DateTime  @default(now())
+  minutes     Int       @default(0)
+  rate        Float     @default(0)
+  billable    Boolean   @default(true)
+  billed      Boolean   @default(false)
+  billedAt    DateTime?
+  running     Boolean   @default(false)
+  startedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  caseId      String
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([running])
 }
 
 model Document {
