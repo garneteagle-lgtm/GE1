@@ -3,6 +3,7 @@
 A small case management web app for a solo lawyer.
 
 - Clients, cases, notes, tasks, deadlines, document uploads
+- Letterhead letter generator — paste text, get a print-ready letter on your firm's letterhead
 - Google sign-in (Auth.js v5)
 - Pulls related messages from Gmail by client email (read-only)
 - Pulls upcoming events from Google Calendar (read-only); link any event to a case
@@ -54,6 +55,7 @@ Open <http://127.0.0.1:3000>.
 - **Gmail sync**: each case has a "Sync from Gmail" button. It searches your inbox for messages to/from the client's email address over the last year and links them to the case. Only headers (subject, from, to, date) are stored locally — the message body is never saved.
 - **Calendar sync**: the Calendar page fetches your next 90 days of events. You assign each event to a case with the dropdown.
 - **Documents**: uploaded files live encrypted in `./storage/documents/` on disk. Max 25MB per file.
+- **Letters**: the **Letters** page turns pasted text into a formatted business letter on your firm's letterhead. Set your firm name, address, and contact details once under **Edit letterhead** (stored in the database), then for each letter fill in the date, recipient, `Re:` line, and salutation and paste the body — paragraphs are separated by blank lines. You can prefill the recipient from any existing client. Click **Print / Save as PDF** and use your browser's print dialog to save a PDF or print it; only the letter sheet prints (US Letter, 1-inch margins), not the app chrome. (If you're upgrading an existing database, run `npm run db:push` once to add the letterhead-settings table.)
 - **Database**: SQLite file at `./dev.db`. Back it up by copying the file (along with `.env`, since the encryption key lives there).
 
 ## Security

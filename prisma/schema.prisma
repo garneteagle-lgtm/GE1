@@ -143,6 +143,23 @@ model EmailMessage {
   createdAt DateTime @default(now())
 }
 
+model LetterheadSettings {
+  id           String   @id @default("singleton")
+  firmName     String   @default("")
+  attorneyName String   @default("")
+  tagline      String   @default("")
+  addressLines String   @default("")
+  phone        String   @default("")
+  fax          String   @default("")
+  email        String   @default("")
+  website      String   @default("")
+  barNumber    String   @default("")
+  footer       String   @default("")
+  signName     String   @default("")
+  signTitle    String   @default("")
+  updatedAt    DateTime @updatedAt
+}
+
 model CalendarEvent {
   id            String    @id @default(cuid())
   googleEventId String    @unique
