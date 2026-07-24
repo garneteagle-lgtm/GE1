@@ -144,20 +144,17 @@ model EmailMessage {
 }
 
 model LetterheadSettings {
-  id           String   @id @default("singleton")
-  firmName     String   @default("")
-  attorneyName String   @default("")
-  tagline      String   @default("")
-  addressLines String   @default("")
-  phone        String   @default("")
-  fax          String   @default("")
-  email        String   @default("")
-  website      String   @default("")
-  barNumber    String   @default("")
-  footer       String   @default("")
-  signName     String   @default("")
-  signTitle    String   @default("")
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default("singleton")
+  logoDataUrl   String   @default("")
+  firmName      String   @default("")
+  footerAddress String   @default("")
+  phone         String   @default("")
+  fax           String   @default("")
+  email         String   @default("")
+  accentColor   String   @default("#2F5496")
+  signName      String   @default("")
+  closing       String   @default("Very truly yours,")
+  updatedAt     DateTime @updatedAt
 }
 
 model CalendarEvent {

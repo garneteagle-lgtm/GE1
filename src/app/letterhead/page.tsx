@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/guard";
 import { db } from "@/lib/db";
-import { getLetterhead, isLetterheadConfigured } from "@/lib/letterhead";
+import { getLetterhead, logoSrc } from "@/lib/letterhead";
 import LetterEditor from "./LetterEditor";
 
 export default async function LetterheadPage() {
@@ -14,8 +14,6 @@ export default async function LetterheadPage() {
     }),
   ]);
 
-  const configured = isLetterheadConfigured(letterhead);
-
   return (
     <div className="space-y-6">
       <div className="no-print flex items-center justify-between">
@@ -25,17 +23,7 @@ export default async function LetterheadPage() {
         </Link>
       </div>
 
-      {!configured && (
-        <div className="no-print card border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Your letterhead is empty.{" "}
-          <Link className="font-medium underline" href="/letterhead/settings">
-            Add your firm name and address
-          </Link>{" "}
-          so it appears at the top of every letter.
-        </div>
-      )}
-
-      <LetterEditor letterhead={letterhead} clients={clients} />
+      <LetterEditor letterhead={letterhead} logo={logoSrc(letterhead)} clients={clients} />
     </div>
   );
 }

@@ -6,6 +6,15 @@ import type { Letterhead } from "@/lib/letterhead";
 
 type ClientLite = { id: string; name: string; address: string | null };
 
+const DELIVERY_OPTIONS = [
+  "",
+  "VIA ELECTRONIC MAIL",
+  "VIA U.S. MAIL",
+  "VIA CERTIFIED MAIL",
+  "VIA FACSIMILE",
+  "HAND DELIVERED",
+];
+
 /** Split pasted text into paragraphs on blank lines, keeping inner line breaks. */
 function toParagraphs(text: string): string[] {
   return text
@@ -27,50 +36,47 @@ function Lines({ text }: { text: string }) {
   );
 }
 
-function firstNameOf(fullName: string): string {
-  return fullName.trim().split(/\s+/)[0] || "";
-}
-
 export default function LetterEditor({
   letterhead,
+  logo,
   clients,
 }: {
   letterhead: Letterhead;
+  logo: string;
   clients: ClientLite[];
 }) {
-  const [recipientName, setRecipientName] = useState("");
-  const [recipientAddress, setRecipientAddress] = useState("");
   const [dateStr, setDateStr] = useState(() => format(new Date(), "MMMM d, yyyy"));
+  const [delivery, setDelivery] = useState("VIA ELECTRONIC MAIL");
+  const [recipient, setRecipient] = useState("");
   const [reLine, setReLine] = useState("");
   const [salutation, setSalutation] = useState("");
   const [body, setBody] = useState("");
-  const [closing, setClosing] = useState("Sincerely,");
-  const [signName, setSignName] = useState(
-    letterhead.signName || letterhead.attorneyName,
-  );
-  const [signTitle, setSignTitle] = useState(letterhead.signTitle || "Attorney at Law");
+  const [closing, setClosing] = useState(letterhead.closing);
+  const [signName, setSignName] = useState(letterhead.signName);
+  const [copyTo, setCopyTo] = useState("");
+  const [enclosure, setEnclosure] = useState(false);
 
   const paragraphs = useMemo(() => toParagraphs(body), [body]);
+
+  const firstRecipientName = recipient.split("\n")[0]?.trim() || "";
   const effectiveSalutation =
     salutation.trim() ||
-    (recipientName.trim() ? `Dear ${recipientName.trim()}:` : "To whom it may concern:");
+    (firstRecipientName ? `Dear ${firstRecipientName},` : "To whom it may concern,");
 
   function onPickClient(id: string) {
     const c = clients.find((x) => x.id === id);
     if (!c) return;
-    setRecipientName(c.name);
-    setRecipientAddress(c.address ?? "");
-    setSalutation(`Dear ${firstNameOf(c.name)}:`);
+    const block = c.address ? `${c.name}\n${c.address}` : c.name;
+    setRecipient(block);
+    const first = c.name.trim().split(/\s+/)[0] || "";
+    setSalutation(`Dear ${first},`);
   }
 
-  const contactLine = [
-    letterhead.phone && `Tel: ${letterhead.phone}`,
-    letterhead.fax && `Fax: ${letterhead.fax}`,
-    letterhead.email,
-    letterhead.website,
-  ]
-    .filter(Boolean)
-    .join("  •  ");
+  // Footer contact line: "PHONE 561-655-1901   FAX 561-655-3870   email"
+  const contactBits: { label?: string; value: string }[] = [];
+  if (letterhead.phone) contactBits.push({ label: "PHONE", value: letterhead.phone });
+  if (letterhead.fax) contactBits.push({ label: "FAX", value: letterhead.fax });
+  if (letterhead.email) contactBits.push({ value: letterhead.email });
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -79,11 +85,7 @@ export default function LetterEditor({
         {clients.length > 0 && (
           <div>
             <label className="label">Prefill recipient from a client</label>
-            <select
-              className="input"
-              defaultValue=""
-              onChange={(e) => onPickClient(e.target.value)}
-            >
+            <select className="input" defaultValue="" onChange={(e) => onPickClient(e.target.value)}>
               <option value="">— Select a client —</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -96,30 +98,32 @@ export default function LetterEditor({
 
         <div>
           <label className="label">Date</label>
-          <input
-            className="input"
-            value={dateStr}
-            onChange={(e) => setDateStr(e.target.value)}
-          />
+          <input className="input" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
         </div>
 
         <div>
-          <label className="label">Recipient name</label>
+          <label className="label">Delivery line</label>
           <input
             className="input"
-            value={recipientName}
-            onChange={(e) => setRecipientName(e.target.value)}
-            placeholder="Jane Doe"
+            list="delivery-options"
+            value={delivery}
+            onChange={(e) => setDelivery(e.target.value)}
+            placeholder="e.g. VIA ELECTRONIC MAIL (optional)"
           />
+          <datalist id="delivery-options">
+            {DELIVERY_OPTIONS.filter(Boolean).map((o) => (
+              <option key={o} value={o} />
+            ))}
+          </datalist>
         </div>
 
         <div>
-          <label className="label">Recipient address</label>
+          <label className="label">Recipient (name &amp; address)</label>
           <textarea
             className="input min-h-[70px]"
-            value={recipientAddress}
-            onChange={(e) => setRecipientAddress(e.target.value)}
-            placeholder={"456 Oak Avenue\nSpringfield, IL 62704"}
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder={"John Smith\n456 Oak Avenue\nWest Palm Beach, FL 33401"}
           />
         </div>
 
@@ -129,7 +133,7 @@ export default function LetterEditor({
             className="input"
             value={reLine}
             onChange={(e) => setReLine(e.target.value)}
-            placeholder="Subject / matter reference"
+            placeholder="Brooks v. Perdue, Case # 2025-017243-FC-04"
           />
         </div>
 
@@ -156,29 +160,36 @@ export default function LetterEditor({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">Closing</label>
-            <input
-              className="input"
-              value={closing}
-              onChange={(e) => setClosing(e.target.value)}
-            />
+            <input className="input" value={closing} onChange={(e) => setClosing(e.target.value)} />
           </div>
           <div>
-            <label className="label">Signature title</label>
+            <label className="label">Signature name</label>
             <input
               className="input"
-              value={signTitle}
-              onChange={(e) => setSignTitle(e.target.value)}
+              value={signName}
+              onChange={(e) => setSignName(e.target.value)}
             />
           </div>
         </div>
+
         <div>
-          <label className="label">Signature name</label>
+          <label className="label">Copy to (xc:)</label>
           <input
             className="input"
-            value={signName}
-            onChange={(e) => setSignName(e.target.value)}
+            value={copyTo}
+            onChange={(e) => setCopyTo(e.target.value)}
+            placeholder="Client (optional)"
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={enclosure}
+            onChange={(e) => setEnclosure(e.target.checked)}
+          />
+          Note enclosure
+        </label>
 
         <div className="flex flex-wrap gap-2 pt-1">
           <button className="btn-primary" type="button" onClick={() => window.print()}>
@@ -192,78 +203,89 @@ export default function LetterEditor({
 
       {/* -------- Live preview / print sheet -------- */}
       <div className="overflow-x-auto">
-        <article className="letter-sheet font-serif text-[12pt] leading-relaxed text-black">
-          {/* Letterhead */}
-          <header className="mb-8 border-b-2 border-slate-800 pb-4 text-center">
-            <div className="text-[20pt] font-bold tracking-wide">
-              {letterhead.firmName || "Your Firm Name"}
-            </div>
-            {letterhead.tagline && (
-              <div className="mt-0.5 text-[11pt] italic text-slate-700">
-                {letterhead.tagline}
+        <article className="letter-sheet flex flex-col text-[12pt] leading-normal text-black">
+          {/* Logo */}
+          <div className="mb-8 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logo}
+              alt={letterhead.firmName || "Firm logo"}
+              className="h-auto"
+              style={{ maxWidth: "4in" }}
+            />
+          </div>
+
+          {/* Body region grows so the footer sits at the bottom of the page */}
+          <div className="flex-1">
+            {/* Date — centered, bold */}
+            <div className="mb-6 text-center font-bold">{dateStr}</div>
+
+            {/* Delivery line — bold */}
+            {delivery.trim() && <div className="mb-4 font-bold">{delivery.trim()}</div>}
+
+            {/* Recipient */}
+            {recipient.trim() && (
+              <div className="mb-4">
+                <Lines text={recipient} />
               </div>
             )}
-            {letterhead.addressLines && (
-              <div className="mt-2 text-[10pt] text-slate-700">
-                <Lines text={letterhead.addressLines} />
+
+            {/* Re: line */}
+            {reLine.trim() && (
+              <div className="mb-4">
+                <span className="font-bold">Re:</span>&nbsp;&nbsp;{reLine.trim()}
               </div>
             )}
-            {contactLine && (
-              <div className="mt-1 text-[10pt] text-slate-700">{contactLine}</div>
-            )}
-          </header>
 
-          {/* Date */}
-          <div className="mb-6">{dateStr}</div>
+            {/* Salutation */}
+            <div className="mb-4">{effectiveSalutation}</div>
 
-          {/* Recipient */}
-          {(recipientName || recipientAddress) && (
-            <div className="mb-6">
-              {recipientName && <div>{recipientName}</div>}
-              {recipientAddress && <Lines text={recipientAddress} />}
-            </div>
-          )}
-
-          {/* Re line */}
-          {reLine.trim() && (
-            <div className="mb-6 font-semibold">
-              Re:&nbsp;&nbsp;{reLine.trim()}
-            </div>
-          )}
-
-          {/* Salutation */}
-          <div className="mb-4">{effectiveSalutation}</div>
-
-          {/* Body */}
-          {paragraphs.length > 0 ? (
-            paragraphs.map((p, i) => (
-              <p key={i} className="mb-4 whitespace-pre-wrap text-justify">
-                {p}
+            {/* Body */}
+            {paragraphs.length > 0 ? (
+              paragraphs.map((p, i) => (
+                <p key={i} className="mb-4 whitespace-pre-wrap">
+                  {p}
+                </p>
+              ))
+            ) : (
+              <p className="mb-4 italic text-slate-400">
+                Your letter text will appear here as you type.
               </p>
-            ))
-          ) : (
-            <p className="mb-4 italic text-slate-400">
-              Your letter text will appear here as you type.
-            </p>
-          )}
+            )}
 
-          {/* Signature block */}
-          <div className="mt-8">
-            <div>{closing}</div>
-            <div className="h-16" />
-            {signName && <div className="font-semibold">{signName}</div>}
-            {signTitle && <div>{signTitle}</div>}
-            {letterhead.barNumber && (
-              <div className="text-[10pt] text-slate-600">
-                Bar No. {letterhead.barNumber}
+            {/* Signature block — centered */}
+            <div className="mt-6 text-center">
+              <div>{closing}</div>
+              <div className="h-16" />
+              {signName && <div>{signName}</div>}
+            </div>
+
+            {/* Copy / enclosure notations */}
+            {(copyTo.trim() || enclosure) && (
+              <div className="mt-8">
+                {copyTo.trim() && <div>xc:&nbsp;&nbsp;{copyTo.trim()}</div>}
+                {enclosure && <div>Enclosure</div>}
               </div>
             )}
           </div>
 
-          {/* Footer */}
-          {letterhead.footer && (
-            <footer className="mt-10 border-t border-slate-300 pt-2 text-center text-[9pt] text-slate-600">
-              {letterhead.footer}
+          {/* Footer bar */}
+          {(letterhead.footerAddress || contactBits.length > 0) && (
+            <footer className="mt-10 text-center text-[10pt] uppercase leading-snug">
+              {letterhead.footerAddress && <div>{letterhead.footerAddress}</div>}
+              {contactBits.length > 0 && (
+                <div>
+                  {contactBits.map((b, i) => (
+                    <span key={i}>
+                      {i > 0 && <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>}
+                      {b.label && (
+                        <span style={{ color: letterhead.accentColor }}>{b.label}&nbsp;</span>
+                      )}
+                      {b.value}
+                    </span>
+                  ))}
+                </div>
+              )}
             </footer>
           )}
         </article>
