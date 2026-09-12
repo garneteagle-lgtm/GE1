@@ -95,3 +95,23 @@ These are the actual likely attack vectors. The app cannot protect against them 
 ### Ethics
 
 Most state bars (under ABA Model Rule 1.6 / 1.1) require "reasonable measures" to protect client confidences. Full-disk encryption + screen lock + this app's at-rest encryption + Google 2FA is comfortably within that bar for solo practice on a personal device. For especially sensitive matters, consider an air-gapped or separate device.
+
+---
+
+## Bundled tools
+
+### Flight finder
+
+`tools/flight-finder` is a standalone command-line tool for finding cheap
+business-class fares — unrelated to case management, and with no dependency on
+the app, its database or its Google credentials.
+
+```bash
+npm run flights -- --demo "new york" london -d +45 -n 7   # invented fares, no signup
+npm run flights -- "new york" london -d 2026-11-12 -n 7 --flex 3
+```
+
+It prices a window of departure dates in one go, flags itineraries that are
+only partly in business class, and links out to Kayak / Google Flights to book.
+Real prices need free Amadeus Self-Service credentials in `.env`; see
+[`tools/flight-finder/README.md`](tools/flight-finder/README.md).

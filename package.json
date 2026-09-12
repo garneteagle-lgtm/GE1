@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "lint": "next lint",
+    "flights": "node tools/flight-finder/cli.mjs",
+    "flights:test": "node tools/flight-finder/test.mjs",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
