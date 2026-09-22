@@ -1,0 +1,54 @@
+# All money figures are in USD. All *_pct fields are percentages (1.0 == 1%).
+
+starting_equity: 25000
+
+targets:
+  # The goal you asked for. The engine measures every run against it and
+  # reports how often it was actually hit. It is NOT a promise.
+  daily_return_pct: 1.0
+  # Bracket exits attached to every entry. Take-profit 1% / stop 0.5% is a
+  # 2:1 reward-to-risk; the strategy then needs > 33.4% winners to break even
+  # before costs.
+  take_profit_pct: 1.0
+  stop_loss_pct: 0.5
+  # Time-based exit: close a trade that has neither hit TP nor SL after this
+  # many bars (26 x 15min = one full session).
+  max_holding_bars: 26
+  # Never hold overnight. Removes gap risk, which is the main way a 0.5% stop
+  # turns into a 5% loss.
+  flat_at_close: true
+
+risk:
+  # Dollars risked per trade = equity * max_risk_per_trade_pct / 100.
+  # Position size is derived from this and the stop distance.
+  max_risk_per_trade_pct: 0.5
+  # Hard cap on one position's notional as % of equity.
+  max_position_pct: 20.0
+  max_positions: 5
+  # Kill switch: once today's P&L hits this loss, no new entries for the day
+  # (live runner also flattens everything).
+  max_daily_loss_pct: 2.0
+  # Circuit breaker: peak-to-trough drawdown that halts the system entirely.
+  max_drawdown_pct: 10.0
+
+costs:
+  commission_per_share: 0.0   # Alpaca is commission-free; keep for other brokers
+  slippage_bps: 5.0           # 0.05% adverse fill assumed on every side
+
+data:
+  timeframe: "15Min"
+  symbols: [SPY, QQQ, AAPL, MSFT, NVDA, AMZN, META, TSLA]
+  start: "2024-01-01"
+  end: "2024-12-31"
+  cache_dir: "data_cache"
+
+strategy:
+  name: mean_reversion       # or: momentum
+  params:
+    lookback: 20
+    z_entry: -2.0
+
+live:
+  poll_seconds: 30
+  # Minutes before the 16:00 ET close at which the runner flattens everything.
+  flatten_minutes_before_close: 5
