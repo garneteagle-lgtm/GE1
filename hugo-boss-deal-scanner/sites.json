@@ -1,0 +1,119 @@
+[
+  {
+    "name": "Hugo Boss — Sale Suits",
+    "url": "https://www.hugoboss.com/us/sale-men-suits/",
+    "brand_implied": true,
+    "enabled": true
+  },
+  {
+    "name": "Nordstrom",
+    "url": "https://www.nordstrom.com/sr?keyword=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Nordstrom Rack",
+    "url": "https://www.nordstromrack.com/sr?origin=keywordsearch&keyword=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Dillard's",
+    "url": "https://www.dillards.com/search-term/boss-suit",
+    "enabled": true
+  },
+  {
+    "name": "Macy's",
+    "url": "https://www.macys.com/shop/search?keyword=hugo+boss+suit",
+    "enabled": true
+  },
+  {
+    "name": "Bloomingdale's",
+    "url": "https://www.bloomingdales.com/shop/search?keyword=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Saks Off 5th",
+    "url": "https://www.saksoff5th.com/search?q=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Neiman Marcus",
+    "url": "https://www.neimanmarcus.com/search.jsp?q=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Bergdorf Goodman",
+    "url": "https://www.bergdorfgoodman.com/search.jsp?q=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Bluefly",
+    "url": "https://www.bluefly.com/search?q=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "SSENSE",
+    "url": "https://www.ssense.com/en-us/men?q=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Zappos",
+    "url": "https://www.zappos.com/hugo-boss-suits",
+    "enabled": true
+  },
+  {
+    "name": "Amazon",
+    "url": "https://www.amazon.com/s?k=hugo+boss+suit",
+    "enabled": true
+  },
+  {
+    "name": "Farfetch",
+    "url": "https://www.farfetch.com/shopping/men/search/items.aspx?q=boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Jomashop",
+    "url": "https://www.jomashop.com/search?q=hugo%20boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "Belk",
+    "url": "https://www.belk.com/search/?q=hugo%20boss%20suit",
+    "enabled": true
+  },
+  {
+    "name": "eBay (new & used)",
+    "url": "https://www.ebay.com/sch/i.html?_nkw=hugo+boss+suit",
+    "enabled": true,
+    "resale": true
+  },
+  {
+    "name": "Poshmark (resale)",
+    "url": "https://poshmark.com/search?query=hugo%20boss%20suit",
+    "enabled": true,
+    "resale": true
+  },
+  {
+    "name": "thredUP (resale)",
+    "url": "https://www.thredup.com/search?search_text=hugo%20boss%20suit",
+    "enabled": true,
+    "resale": true
+  },
+  {
+    "name": "The RealReal (resale)",
+    "url": "https://www.therealreal.com/shop?keywords=hugo%20boss%20suit",
+    "enabled": true,
+    "resale": true
+  },
+  {
+    "name": "Grailed (resale)",
+    "url": "https://www.grailed.com/shop?query=hugo%20boss%20suit",
+    "enabled": true,
+    "resale": true
+  },
+  {
+    "name": "Mercari (resale)",
+    "url": "https://www.mercari.com/search/?keyword=hugo%20boss%20suit",
+    "enabled": true,
+    "resale": true
+  }
+]
