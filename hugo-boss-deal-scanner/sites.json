@@ -81,39 +81,8 @@
     "enabled": true
   },
   {
-    "name": "eBay (new & used)",
-    "url": "https://www.ebay.com/sch/i.html?_nkw=hugo+boss+suit",
-    "enabled": true,
-    "resale": true
-  },
-  {
-    "name": "Poshmark (resale)",
-    "url": "https://poshmark.com/search?query=hugo%20boss%20suit",
-    "enabled": true,
-    "resale": true
-  },
-  {
-    "name": "thredUP (resale)",
-    "url": "https://www.thredup.com/search?search_text=hugo%20boss%20suit",
-    "enabled": true,
-    "resale": true
-  },
-  {
-    "name": "The RealReal (resale)",
-    "url": "https://www.therealreal.com/shop?keywords=hugo%20boss%20suit",
-    "enabled": true,
-    "resale": true
-  },
-  {
-    "name": "Grailed (resale)",
-    "url": "https://www.grailed.com/shop?query=hugo%20boss%20suit",
-    "enabled": true,
-    "resale": true
-  },
-  {
-    "name": "Mercari (resale)",
-    "url": "https://www.mercari.com/search/?keyword=hugo%20boss%20suit",
-    "enabled": true,
-    "resale": true
+    "name": "eBay (new with tags only)",
+    "url": "https://www.ebay.com/sch/i.html?_nkw=hugo+boss+suit&LH_ItemCondition=1000",
+    "enabled": true
   }
 ]

@@ -23,7 +23,7 @@ LAST_SCAN = HERE / "last_scan.json"
 SEEN_FILE = HERE / "seen.json"
 
 state_lock = threading.Lock()
-state = {"running": False, "progress": [], "total": 0, "report": None, "error": None}
+state = {"running": False, "progress": [], "total": 0, "checked": 0, "to_check": None, "report": None, "error": None}
 if LAST_SCAN.exists():
     try:
         state["report"] = json.loads(LAST_SCAN.read_text())
@@ -31,17 +31,25 @@ if LAST_SCAN.exists():
         pass
 
 
-def _run_scan(show_browser):
+def _run_scan(show_browser, size):
     sites = [s for s in scanner.load_sites() if s.get("enabled", True)]
     with state_lock:
-        state.update(running=True, progress=[], total=len(sites), error=None)
+        state.update(running=True, progress=[], total=len(sites), checked=0, to_check=None, error=None)
 
     def on_progress(r):
         with state_lock:
             state["progress"].append({k: v for k, v in r.items() if k != "items"})
 
+    def on_check(d):
+        with state_lock:
+            if "total" in d:
+                state["to_check"] = d["total"]
+            else:
+                state["checked"] += 1
+
     try:
-        report = asyncio.run(scanner.scan(sites, headless=not show_browser, on_progress=on_progress))
+        report = asyncio.run(scanner.scan(sites, headless=not show_browser, on_progress=on_progress,
+                                          size=size, on_check=on_check))
         seen = set(json.loads(SEEN_FILE.read_text())) if SEEN_FILE.exists() else set()
         first_run = not seen
         for d in report["deals"]:
@@ -104,8 +112,15 @@ class Handler(BaseHTTPRequestHandler):
                 if state["running"]:
                     return self._send(409, {"error": "Scan already running"})
                 state["running"] = True
-            show = bool(self._body().get("show_browser"))
-            threading.Thread(target=_run_scan, args=(show,), daemon=True).start()
+            body = self._body()
+            size = str(body.get("size") or scanner.DEFAULT_SIZE).strip().upper()
+            try:
+                scanner.parse_size(size)
+            except ValueError as e:
+                with state_lock:
+                    state["running"] = False
+                return self._send(400, {"error": str(e)})
+            threading.Thread(target=_run_scan, args=(bool(body.get("show_browser")), size), daemon=True).start()
             return self._send(202, {"ok": True})
         if self.path == "/api/sites":
             sites = self._body()
