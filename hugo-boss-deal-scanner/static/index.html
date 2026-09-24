@@ -80,9 +80,6 @@
   <label class="sub" title="Opens a visible browser window. Some sites block hidden browsers; this often gets past them.">
     <input type="checkbox" id="showBrowser"> Show browser while scanning
   </label>
-  <label class="sub" title="Suit size to check stock for, e.g. 38R, 40L, 42S">Size
-    <input type="text" id="size" value="38R" maxlength="4" style="width:58px;text-transform:uppercase">
-  </label>
   <button class="primary" id="scanBtn">Scan for deals</button>
   <button id="quitBtn" title="Stop the app">Quit</button>
 </header>
@@ -97,15 +94,15 @@
     <div class="err hidden" id="error"></div>
 
     <div class="filters">
-      <label>Search <input type="text" id="q" placeholder="e.g. navy, 42R, Huge"></label>
+      <label>Search <input type="text" id="q" placeholder="e.g. navy, tuxedo, Huge"></label>
       <label>Max price $ <input type="number" id="maxPrice" min="0" step="50"></label>
       <label>Min discount % <input type="number" id="minOff" min="0" max="95" step="5"></label>
       <label><input type="checkbox" id="fitSlim" checked> Slim fit</label>
       <label><input type="checkbox" id="fitRegular" checked> Regular fit</label>
       <label><input type="checkbox" id="saleOnly" checked> On sale only</label>
       <label><input type="checkbox" id="fullOnly" checked> Full suits only (no jackets/pants)</label>
-      <label title="Size or fit couldn't be read from the product page (blocked page, or the store doesn't list it). Open the link to check yourself.">
-        <input type="checkbox" id="unverified"> Also show unconfirmed size/fit</label>
+      <label title="The fit couldn't be read from the listing or product page. Open the link to check it yourself.">
+        <input type="checkbox" id="unverified"> Also show unconfirmed fit</label>
       <label>Sort <select id="sort">
         <option value="discount">Biggest discount</option>
         <option value="price">Lowest price</option>
@@ -118,12 +115,12 @@
     <div class="grid" id="grid"></div>
     <div class="empty-state hidden" id="emptyState">
       <h2>Ready when you are</h2>
-      <p>Click <b>Scan for deals</b>. It searches every store, then opens each sale suit to check your size is in stock and the fit is slim or regular.<br>A full scan takes about 5–10 minutes.</p>
+      <p>Click <b>Scan for deals</b> to search every store for new Hugo Boss suits on sale in slim or regular fit.<br>A full scan takes a few minutes.</p>
     </div>
   </section>
 
   <section id="tab-sites" class="hidden">
-    <p class="sub">Uncheck a site to skip it. To add a store, paste the URL of its search results page for "hugo boss suit" (or its Hugo Boss sale page).</p>
+    <p class="sub">Uncheck a site to skip it. Stick to reputable stores that sell new Hugo Boss directly. To add one, paste the URL of its search results page for "hugo boss suit" (or its Hugo Boss sale page).</p>
     <table>
       <thead><tr><th>Scan</th><th>Name</th><th>Search page URL</th><th></th></tr></thead>
       <tbody id="sitesBody"></tbody>
@@ -143,7 +140,7 @@ const money = n => '$' + Number(n).toLocaleString(undefined, {minimumFractionDig
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // Remember filter settings between launches.
-const FILTERS = ['q','maxPrice','minOff','fitSlim','fitRegular','saleOnly','fullOnly','unverified','sort','showBrowser','size'];
+const FILTERS = ['q','maxPrice','minOff','fitSlim','fitRegular','saleOnly','fullOnly','unverified','sort','showBrowser'];
 try {
   const saved = JSON.parse(localStorage.getItem('filters') || '{}');
   FILTERS.forEach(k => { if (k in saved) { const el = $(k); el.type === 'checkbox' ? el.checked = saved[k] : el.value = saved[k]; } });
@@ -172,14 +169,12 @@ function render() {
   const fitOk = d => d.fit === 'slim' ? $('fitSlim').checked
                    : d.fit === 'regular' ? $('fitRegular').checked
                    : !d.fit && unverified;
-  const sizeOk = d => d.size_ok === 'yes' || (unverified && d.size_ok !== 'no');
   const passesBasics = d => d.price <= maxP && d.discount >= minOff &&
     (!$('saleOnly').checked || d.discount > 0) &&
     (!$('fullOnly').checked || !d.separates) &&
     q.every(w => (d.name + ' ' + d.site).toLowerCase().includes(w));
-  let list = deals.filter(d => passesBasics(d) && fitOk(d) && sizeOk(d));
-  const hiddenUnverified = unverified ? 0 : deals.filter(d => passesBasics(d) && d.size_ok !== 'no'
-    && (!d.fit || d.size_ok !== 'yes') && (d.fit ? fitOk(d) : true)).length;
+  let list = deals.filter(d => passesBasics(d) && fitOk(d));
+  const hiddenUnverified = unverified ? 0 : deals.filter(d => passesBasics(d) && !d.fit).length;
   const s = $('sort').value;
   const savings = d => d.was ? d.was - d.price : 0;
   list.sort(s === 'price' ? (a, b) => a.price - b.price
@@ -187,9 +182,8 @@ function render() {
           : s === 'site' ? (a, b) => a.site.localeCompare(b.site) || b.discount - a.discount
           : (a, b) => b.discount - a.discount || a.price - b.price);
   const okSites = report.sites.filter(x => x.status === 'ok').length;
-  const size = report.size || '38R';
-  $('summary').textContent = `${list.length} new Hugo Boss suits with ${size} confirmed in stock, found across ${okSites} of ${report.sites.length} websites.`
-    + (hiddenUnverified ? ` ${hiddenUnverified} more couldn't be confirmed for size or fit — tick “Also show unconfirmed size/fit” to see them.` : '');
+  $('summary').textContent = `${list.length} new Hugo Boss suits in slim or regular fit, found across ${okSites} of ${report.sites.length} websites.`
+    + (hiddenUnverified ? ` ${hiddenUnverified} more couldn't be confirmed for fit — tick “Also show unconfirmed fit” to see them.` : '');
   $('grid').innerHTML = list.map(d => `
     <a class="card" href="${esc(d.url)}" target="_blank" rel="noopener">
       <div class="img" style="background-image:url('${esc(d.image).replace(/'/g, '%27')}')">
@@ -199,9 +193,7 @@ function render() {
       <div class="body">
         <div class="site">${esc(d.site)}</div>
         <div class="name" title="${esc(d.name)}">${esc(d.name)}</div>
-        <div class="tag">${d.fit === 'slim' ? 'Slim fit' : d.fit === 'regular' ? 'Regular fit' : 'Fit unconfirmed'}
-          · ${d.size_ok === 'yes' ? `<b style="color:var(--good)">${esc(size)} in stock</b>` : `<span style="color:var(--warn)">${esc(size)} unconfirmed</span>`}
-          ${d.separates ? ' · Separate' : ''}</div>
+        <div class="tag">${d.fit === 'slim' ? 'Slim fit' : d.fit === 'regular' ? 'Regular fit' : '<span style="color:var(--warn)">Fit unconfirmed</span>'}${d.separates ? ' · Separate' : ''}</div>
         <div class="price">${money(d.price)}${d.was ? `<span class="was">${money(d.was)}</span>` : ''}</div>
       </div>
     </a>`).join('');
@@ -230,7 +222,7 @@ async function poll() {
       $('progressText').textContent = `Step 1 of 2: searching stores… ${st.progress.length} of ${st.total} done`;
       $('progressBar').style.width = (st.total ? 100 * st.progress.length / st.total : 0) + '%';
     } else {
-      $('progressText').textContent = `Step 2 of 2: checking size and fit on each product page… ${st.checked} of ${st.to_check}`;
+      $('progressText').textContent = `Step 2 of 2: checking fit on product pages that don't say it… ${st.checked} of ${st.to_check}`;
       $('progressBar').style.width = (st.to_check ? 100 * st.checked / st.to_check : 100) + '%';
     }
     renderChips(st.progress, true);
@@ -246,7 +238,7 @@ async function poll() {
 $('scanBtn').onclick = async () => {
   $('scanBtn').disabled = true;
   await fetch('/api/scan', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({show_browser: $('showBrowser').checked, size: $('size').value.trim() || '38R'})})
+                            body: JSON.stringify({show_browser: $('showBrowser').checked})})
     .then(async r => { if (!r.ok) alert((await r.json()).error); });
   poll();
 };

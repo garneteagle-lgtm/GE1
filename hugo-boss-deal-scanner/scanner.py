@@ -27,7 +27,6 @@ USER_AGENT = (
 )
 CONCURRENCY = 4
 CHECK_CONCURRENCY = 5
-DEFAULT_SIZE = "38R"
 PAGE_TIMEOUT_MS = 45_000
 SETTLE_MS = 5_000
 
@@ -81,14 +80,9 @@ def fit_from_name(name):
     return None
 
 
-def parse_size(size):
-    """'38R' -> (38, 'R|Reg|Regular', 48). Chest + length; EU/IT size is chest + 10."""
-    m = re.fullmatch(r"\s*(\d{2})\s*([SRL])?\s*", size or "", re.I)
-    if not m:
-        raise ValueError(f"Size should look like 38R, 40L or 42S, not {size!r}")
-    chest, length = int(m.group(1)), (m.group(2) or "R").upper()
-    words = {"R": "R|Reg|Regular", "S": "S|Short", "L": "L|Long"}[length]
-    return chest, words, chest + 10
+def _host(url):
+    host = urlsplit(url).netloc.lower().split(":")[0]
+    return host[4:] if host.startswith("www.") else host
 
 
 def _canonical(url):
@@ -111,6 +105,8 @@ def _clean(items, site):
             continue
         if site.get("resale") or USED_RE.search(name):
             continue  # brand new only
+        if _host(url) != _host(site["url"]):
+            continue  # only products sold by the store itself, not ads or outside sellers
         price = it.get("price")
         if not price or price < 20:
             continue
@@ -134,7 +130,6 @@ def _clean(items, site):
             "image": it.get("image") or "",
             "site": site["name"],
             "fit": fit_from_name(name),
-            "size_ok": None,
         }
     out = []
     for d in merged.values():
@@ -179,8 +174,8 @@ async def _scan_site(ctx, site, sem, on_progress):
         return result
 
 
-async def _check_product(ctx, deal, size_args, sem, domain_locks, on_check):
-    """Open the product page: is the wanted size in stock, what fit, is it new?"""
+async def _check_product(ctx, deal, sem, domain_locks, on_check):
+    """Open the product page to read the fit and make sure the listing is new."""
     domain = urlsplit(deal["url"]).netloc
     lock = domain_locks.setdefault(domain, asyncio.Lock())
     async with lock, sem:  # one page per store at a time, to stay polite and avoid blocks
@@ -188,14 +183,13 @@ async def _check_product(ctx, deal, size_args, sem, domain_locks, on_check):
         try:
             await page.goto(deal["url"], wait_until="domcontentloaded", timeout=PAGE_TIMEOUT_MS)
             await page.wait_for_timeout(SETTLE_MS)
-            info = await page.evaluate(CHECK_JS, size_args)
-            deal["size_ok"] = info["size"]
+            info = await page.evaluate(CHECK_JS)
             if info["used"]:
                 deal["used"] = True
             if info["fit"] and (not deal["fit"] or info["fit"] == "extra_slim"):
                 deal["fit"] = info["fit"]
         except Exception:
-            deal["size_ok"] = "unknown"
+            pass  # fit stays unknown
         finally:
             await page.close()
         if on_check:
@@ -218,9 +212,7 @@ async def _launch(pw, headless):
         return await pw.chromium.launch(headless=headless, args=args)
 
 
-async def scan(sites=None, headless=True, on_progress=None, size=DEFAULT_SIZE, on_check=None):
-    chest, len_re, eu = parse_size(size)
-    size_args = {"chest": chest, "lenRe": len_re, "eu": eu}
+async def scan(sites=None, headless=True, on_progress=None, on_check=None):
     sites = [s for s in (sites or load_sites()) if s.get("enabled", True) and not s.get("resale")]
     sem = asyncio.Semaphore(CONCURRENCY)
     async with async_playwright() as pw:
@@ -235,42 +227,40 @@ async def scan(sites=None, headless=True, on_progress=None, size=DEFAULT_SIZE, o
         results = await asyncio.gather(*[_scan_site(ctx, s, sem, on_progress) for s in sites])
         deals = [d for r in results for d in r.pop("items")]
 
-        # Second pass: open each on-sale suit to check size stock and fit.
-        to_check = [d for d in deals if d["discount"] > 0 and not d["separates"]
-                    and d["fit"] in (None, "slim", "regular")]
+        # Second pass: open product pages to read the fit (and catch any used listings).
+        # Only needed when the listing name doesn't say the fit.
+        to_check = [d for d in deals if d["discount"] > 0 and not d["separates"] and d["fit"] is None]
         if on_check:
             on_check({"total": len(to_check)})
         check_sem, locks = asyncio.Semaphore(CHECK_CONCURRENCY), {}
-        await asyncio.gather(*[_check_product(ctx, d, size_args, check_sem, locks, on_check) for d in to_check])
+        await asyncio.gather(*[_check_product(ctx, d, check_sem, locks, on_check) for d in to_check])
         await browser.close()
 
-    # Brand new only, slim or regular fit only, and never a confirmed sold-out size.
+    # Brand new only, and slim or regular fit only.
     deals = [d for d in deals
-             if not d.get("used") and d["fit"] not in ("extra_slim", "other") and d["size_ok"] != "no"]
+             if not d.get("used") and d["fit"] not in ("extra_slim", "other")]
     deals.sort(key=lambda d: (-d["discount"], d["price"]))
-    return {"scanned_at": time.strftime("%Y-%m-%d %H:%M"), "size": size.upper(), "sites": results, "deals": deals}
+    return {"scanned_at": time.strftime("%Y-%m-%d %H:%M"), "sites": results, "deals": deals}
 
 
 def main():
     headless = "--show-browser" not in sys.argv
-    size = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--size=")), DEFAULT_SIZE)
 
     def progress(r):
         print(f"  {r['status']:>7}  {r['count']:>3} suits  {r['site']}", file=sys.stderr)
 
     def checked(d):
         if "total" in d:
-            print(f"Checking {d['total']} product pages for size {size} and fit…", file=sys.stderr)
+            print(f"Checking {d['total']} product pages for fit…", file=sys.stderr)
 
     print("Scanning…", file=sys.stderr)
-    report = asyncio.run(scan(headless=headless, on_progress=progress, size=size, on_check=checked))
+    report = asyncio.run(scan(headless=headless, on_progress=progress, on_check=checked))
     print()
     for d in report["deals"]:
         off = f"{d['discount']:>3}% off" if d["discount"] else "        "
         was = f"(was ${d['was']:,.0f})" if d["was"] else ""
-        size_note = {"yes": f"{size} in stock", "unknown": f"{size} unconfirmed"}.get(d["size_ok"], "not checked")
         print(f"{off}  ${d['price']:>8,.2f} {was:<14} {d['site']:<22} {d['name'][:60]}")
-        print(f"          fit: {d['fit'] or 'unknown'} · {size_note} · {d['url']}")
+        print(f"          fit: {d['fit'] or 'unknown'} · {d['url']}")
 
 
 if __name__ == "__main__":

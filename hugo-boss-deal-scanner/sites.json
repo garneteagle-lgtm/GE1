@@ -46,11 +46,6 @@
     "enabled": true
   },
   {
-    "name": "Bluefly",
-    "url": "https://www.bluefly.com/search?q=boss%20suit",
-    "enabled": true
-  },
-  {
     "name": "SSENSE",
     "url": "https://www.ssense.com/en-us/men?q=boss%20suit",
     "enabled": true
@@ -61,28 +56,13 @@
     "enabled": true
   },
   {
-    "name": "Amazon",
-    "url": "https://www.amazon.com/s?k=hugo+boss+suit",
-    "enabled": true
-  },
-  {
     "name": "Farfetch",
     "url": "https://www.farfetch.com/shopping/men/search/items.aspx?q=boss%20suit",
     "enabled": true
   },
   {
-    "name": "Jomashop",
-    "url": "https://www.jomashop.com/search?q=hugo%20boss%20suit",
-    "enabled": true
-  },
-  {
     "name": "Belk",
     "url": "https://www.belk.com/search/?q=hugo%20boss%20suit",
-    "enabled": true
-  },
-  {
-    "name": "eBay (new with tags only)",
-    "url": "https://www.ebay.com/sch/i.html?_nkw=hugo+boss+suit&LH_ItemCondition=1000",
     "enabled": true
   }
 ]

@@ -31,7 +31,7 @@ if LAST_SCAN.exists():
         pass
 
 
-def _run_scan(show_browser, size):
+def _run_scan(show_browser):
     sites = [s for s in scanner.load_sites() if s.get("enabled", True)]
     with state_lock:
         state.update(running=True, progress=[], total=len(sites), checked=0, to_check=None, error=None)
@@ -49,7 +49,7 @@ def _run_scan(show_browser, size):
 
     try:
         report = asyncio.run(scanner.scan(sites, headless=not show_browser, on_progress=on_progress,
-                                          size=size, on_check=on_check))
+                                          on_check=on_check))
         seen = set(json.loads(SEEN_FILE.read_text())) if SEEN_FILE.exists() else set()
         first_run = not seen
         for d in report["deals"]:
@@ -112,15 +112,8 @@ class Handler(BaseHTTPRequestHandler):
                 if state["running"]:
                     return self._send(409, {"error": "Scan already running"})
                 state["running"] = True
-            body = self._body()
-            size = str(body.get("size") or scanner.DEFAULT_SIZE).strip().upper()
-            try:
-                scanner.parse_size(size)
-            except ValueError as e:
-                with state_lock:
-                    state["running"] = False
-                return self._send(400, {"error": str(e)})
-            threading.Thread(target=_run_scan, args=(bool(body.get("show_browser")), size), daemon=True).start()
+            show = bool(self._body().get("show_browser"))
+            threading.Thread(target=_run_scan, args=(show,), daemon=True).start()
             return self._send(202, {"ok": True})
         if self.path == "/api/sites":
             sites = self._body()
