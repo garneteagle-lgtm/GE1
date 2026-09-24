@@ -51,9 +51,11 @@ autotrader/
   compound.py        compounding math + bootstrap Monte Carlo
   broker/            Broker interface; PaperBroker (in-process); AlpacaBroker
   live.py            LiveRunner: same Strategy/RiskManager driven by a broker
+  universe.py        S&P 500 constituents (bundled snapshot + Wikipedia refresh)
+  scanner.py         daily behaviour scan of every constituent
   __main__.py        CLI
 config/default.yaml  every knob, commented
-tests/               18 tests: fills, exits, accounting, risk rails, live loop
+tests/               22 tests: fills, exits, accounting, risk rails, live loop, scanner
 ```
 
 ### Design rules the engine enforces
@@ -120,6 +122,57 @@ with a profit factor above ~1.3 across several years and several symbol sets is
 worth paper trading. The Monte Carlo block under each report resamples the
 observed daily returns into 5,000 one-year futures so you judge the
 distribution, not a single lucky path.
+
+## Daily S&P 500 scan
+
+`autotrader scan` pulls a year of daily bars for all ~503 constituents (plus
+SPY as the benchmark), computes ~30 behaviour statistics per stock, and prints
+a market report. It runs in about a second once bars are cached; the full
+per-symbol table lands in `reports/scan_<date>.csv` for spreadsheets.
+
+```bash
+python -m autotrader scan --synthetic            # no keys: random-walk demo
+python -m autotrader scan                        # real: Alpaca daily bars, cached per day
+python -m autotrader scan --refresh-universe     # also re-pull the constituent list
+python -m autotrader scan --top 25 --min-dollar-vol 100
+```
+
+Per stock (`reports/scan_<date>.csv`):
+
+| group | columns |
+|---|---|
+| returns | `ret_1d/5d/20d/60d/250d_pct` |
+| volatility & range | `vol_20d_ann_pct`, `vol_250d_ann_pct`, `atr14_pct`, `avg_range_20d_pct`, `days_abs_move_ge_1_pct` |
+| **bracket reachability** | `days_reach_target_pct` (open→high ≥ +1%), `days_hit_stop_pct` (open→low ≤ −0.5%), `days_target_not_stop_pct` (target reached on a day the stop was never touched) |
+| gaps | `gap_abs_avg_pct`, `gaps_ge_1_pct` |
+| trend | `rsi14`, `sma50_dist_pct`, `sma200_dist_pct`, `sma50_slope_pct`, `from_52w_high_pct`, `from_52w_low_pct`, `regime` (uptrend / downtrend / range, `+/high-vol` when 20d vol > 1.5× 250d) |
+| behaviour | `autocorr_1` (lag-1 autocorrelation of daily returns: negative = mean-reverting, positive = trending), `beta_spy`, `corr_spy` |
+| liquidity | `dollar_vol_20d_m` |
+
+The report rolls these into breadth (advance/decline, % above SMA50/200, new
+highs/lows), a sector table, and ranked lists: top/bottom movers, most
+volatile, best target-reach among liquid names, most mean-reverting, most
+trending, RSI extremes, highest beta.
+
+The bracket-reachability columns are the ones that speak to the 1% goal. On
+random-walk data the median stock reaches +1% from the open on ~64% of days but
+does so *without first touching −0.5%* on only ~13% — the stop is hit far more
+often than the target on noise. Real data will differ by name; that gap is
+what a strategy has to close.
+
+### Running it every day
+
+Alpaca's IEX daily bar for today is final after the 16:00 ET close, so schedule
+the scan for the evening. A crontab line (server in UTC, 21:30 UTC = 17:30 ET
+during daylight time):
+
+```
+30 21 * * 1-5  cd /path/to/autotrader && /usr/bin/python3 -m autotrader scan >> reports/scan.log 2>&1
+```
+
+Universe changes (index additions/removals) are picked up with
+`--refresh-universe`; the bundled `autotrader/universe/sp500.csv` is a
+snapshot dated 2026-09-24.
 
 ## Writing a strategy
 

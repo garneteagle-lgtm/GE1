@@ -13,6 +13,7 @@ dependencies = [
     "pyyaml>=6",
     "python-dotenv>=1",
     "alpaca-py>=0.30",
+    "lxml>=5",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,9 @@ autotrader = "autotrader.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["autotrader*"]
+
+[tool.setuptools.package-data]
+autotrader = ["universe/*.csv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

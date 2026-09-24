@@ -67,6 +67,26 @@ def synthetic_bars(
     return out
 
 
+def synthetic_daily_bars(symbols: list[str], days: int = 300, seed: int = 0,
+                        start: str = "2025-01-02", daily_vol: float = 0.018) -> Bars:
+    """Random-walk daily bars on a weekday calendar; the null baseline for the scanner."""
+    rng = np.random.default_rng(seed)
+    index = pd.bdate_range(start, periods=days, tz=NY).tz_convert("UTC")
+    out: Bars = {}
+    for i, sym in enumerate(symbols):
+        px0 = 20.0 + 5.0 * (i % 60)
+        vol = daily_vol * rng.uniform(0.5, 2.0)
+        close = px0 * np.exp(np.cumsum(rng.normal(0.0, vol, days)))
+        gap = rng.normal(0.0, vol / 3, days)
+        open_ = np.concatenate([[px0], close[:-1]]) * np.exp(gap)
+        wiggle = np.abs(rng.normal(0.0, vol / 2, days))
+        high = np.maximum(open_, close) * (1 + wiggle)
+        low = np.minimum(open_, close) * (1 - wiggle)
+        volume = rng.integers(500_000, 20_000_000, days).astype(float)
+        out[sym] = pd.DataFrame({"open": open_, "high": high, "low": low, "close": close, "volume": volume}, index=index)
+    return out
+
+
 _TF_RE = re.compile(r"^(\d+)(Min|Hour|Day)$", re.IGNORECASE)
 
 
@@ -148,6 +168,32 @@ class AlpacaData:
         if rth_only:
             out = {k: regular_hours(v) for k, v in out.items()}
         return out
+
+    def daily(self, symbols: list[str], lookback_days: int = 365, chunk: int = 100,
+              cache_dir: str | Path | None = None) -> Bars:
+        """Daily bars for a large universe, fetched in symbol chunks and cached
+        once per calendar day (the scan re-runs are then instant)."""
+        end = pd.Timestamp.now(tz="UTC")
+        start = end - pd.Timedelta(days=int(lookback_days * 1.5))
+        cache = Path(cache_dir or self.cache_dir) / f"daily_{end:%Y-%m-%d}.csv"
+        out: Bars = {}
+        if cache.exists():
+            long = pd.read_csv(cache, index_col=0, parse_dates=True)
+            long.index = pd.DatetimeIndex(long.index).tz_convert("UTC")
+            for sym, d in long.groupby("symbol"):
+                out[sym] = d.drop(columns="symbol").sort_index()
+            if set(symbols) <= set(out):
+                return {s: out[s] for s in symbols}
+            log.info("cache %s lacks %d symbols; refetching", cache.name, len(set(symbols) - set(out)))
+        symbols = list(dict.fromkeys(symbols))
+        for i in range(0, len(symbols), chunk):
+            batch = symbols[i : i + chunk]
+            log.info("fetching daily bars %d-%d of %d", i + 1, i + len(batch), len(symbols))
+            out.update(self._fetch(batch, "1Day", start, end))
+        frames = [d.assign(symbol=s) for s, d in out.items() if len(d)]
+        if frames:
+            pd.concat(frames).to_csv(cache)
+        return {s: out.get(s, pd.DataFrame(columns=COLUMNS)) for s in symbols}
 
     def recent(self, symbols: list[str], timeframe: str, bars: int) -> Bars:
         """Last ``bars`` bars per symbol for the live loop (over-fetches by

@@ -52,6 +52,33 @@ def cmd_backtest(args) -> int:
     return 0
 
 
+def cmd_scan(args) -> int:
+    from . import scanner, universe
+    from .data import synthetic_daily_bars
+
+    cfg = _cfg(args)
+    uni = universe.sp500(cfg.data.cache_dir, refresh_online=args.refresh_universe)
+    symbols = uni["symbol"].tolist()
+    if args.limit:
+        uni, symbols = uni.head(args.limit), symbols[: args.limit]
+    if args.synthetic:
+        bars = synthetic_daily_bars(symbols + [scanner.BENCHMARK], days=args.lookback + 10, seed=args.seed)
+    else:
+        from .data import AlpacaData
+
+        bars = AlpacaData(cfg.data.cache_dir).daily(symbols + [scanner.BENCHMARK], lookback_days=args.lookback)
+    tp, sl = cfg.targets.take_profit_pct, cfg.targets.stop_loss_pct
+    res = scanner.scan(bars, uni, target_pct=tp, stop_pct=sl)
+    print(scanner.format_report(res, top=args.top, min_dollar_vol_m=args.min_dollar_vol, target_pct=tp, stop_pct=sl))
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = res.asof.tz_convert("America/New_York").strftime("%Y-%m-%d")
+    res.table.round(4).to_csv(out_dir / f"scan_{stamp}.csv")
+    res.sectors.to_csv(out_dir / f"scan_{stamp}_sectors.csv")
+    print(f"wrote {out_dir / f'scan_{stamp}.csv'} ({len(res.table)} rows) and {out_dir / f'scan_{stamp}_sectors.csv'}")
+    return 0
+
+
 def cmd_compound(args) -> int:
     print(f"{args.rate:.2f}% per {args.period} compounding from ${args.start:,.0f}\n")
     per_year = {"day": 252, "week": 52, "month": 12}[args.period]
@@ -114,6 +141,17 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--mc-days", type=int, default=252, help="Monte Carlo horizon in sessions")
     b.add_argument("--trades", help="CSV path to write the trade log")
     b.set_defaults(fn=cmd_backtest)
+
+    sc = sub.add_parser("scan", help="daily behaviour scan of every S&P 500 constituent")
+    sc.add_argument("--synthetic", action="store_true", help="random-walk daily bars (no API keys needed)")
+    sc.add_argument("--lookback", type=int, default=252, help="sessions of history per symbol")
+    sc.add_argument("--top", type=int, default=15, help="rows per ranked list")
+    sc.add_argument("--min-dollar-vol", type=float, default=50.0, help="liquidity floor in $M/day for candidate lists")
+    sc.add_argument("--limit", type=int, default=0, help="only the first N constituents (quick runs)")
+    sc.add_argument("--seed", type=int, default=0)
+    sc.add_argument("--refresh-universe", action="store_true", help="pull the current constituent list from Wikipedia")
+    sc.add_argument("--out", default="reports", help="directory for the per-symbol CSV")
+    sc.set_defaults(fn=cmd_scan)
 
     c = sub.add_parser("compound", help="what a fixed periodic return compounds to")
     c.add_argument("--rate", type=float, default=1.0, help="percent per period")
