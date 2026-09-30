@@ -6,7 +6,8 @@ import { formatDistanceToNowStrict, format, isPast } from "date-fns";
 export default async function Dashboard() {
   await requireUser();
 
-  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails] = await Promise.all([
+  const [totalCases, openCases, upcomingDeadlines, openTasks, recentEmails, newFilings] =
+    await Promise.all([
     db.case.count(),
     db.case.count({ where: { status: "open" } }),
     db.deadline.findMany({
@@ -26,6 +27,12 @@ export default async function Dashboard() {
       orderBy: { sentAt: "desc" },
       take: 5,
       include: { case: { include: { client: true } } },
+    }),
+    db.filing.findMany({
+      where: { reviewedAt: null },
+      orderBy: { receivedAt: "desc" },
+      take: 10,
+      include: { case: true },
     }),
   ]);
 
@@ -74,6 +81,34 @@ export default async function Dashboard() {
         <Stat label="Upcoming deadlines" value={upcomingDeadlines.length} href="#deadlines" />
         <Stat label="Open tasks" value={openTasks.length} href="#tasks" />
       </div>
+
+      {newFilings.length > 0 && (
+        <section className="card border-amber-300 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">New court filings</h2>
+            <Link className="btn-ghost" href="/filings">All filings</Link>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {newFilings.map((f) => (
+              <li key={f.id} className="py-3 text-sm">
+                <div className="font-medium">{f.docketText || f.subject || "(no subject)"}</div>
+                <div className="text-xs text-slate-500">
+                  {format(f.receivedAt, "MMM d, h:mm a")} ·{" "}
+                  {f.case ? (
+                    <Link className="hover:underline" href={`/cases/${f.case.id}`}>
+                      {f.case.title}
+                    </Link>
+                  ) : (
+                    <Link className="text-amber-700 hover:underline" href="/filings">
+                      Unmatched — assign a case
+                    </Link>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section id="deadlines" className="card p-6">
         <div className="mb-4 flex items-center justify-between">

@@ -54,6 +54,13 @@ async function addDeadline(caseId: string, formData: FormData) {
   revalidatePath(`/cases/${caseId}`);
 }
 
+async function markFilingReviewed(filingId: string, caseId: string) {
+  "use server";
+  await requireUser();
+  await db.filing.update({ where: { id: filingId }, data: { reviewedAt: new Date() } });
+  revalidatePath(`/cases/${caseId}`);
+}
+
 async function setStatus(caseId: string, status: string) {
   "use server";
   await requireUser();
@@ -95,6 +102,7 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
       emails: { orderBy: { sentAt: "desc" }, take: 20 },
       events: { orderBy: { startAt: "asc" }, take: 20 },
       documents: { orderBy: { uploadedAt: "desc" } },
+      filings: { orderBy: { receivedAt: "desc" }, take: 20 },
     },
   });
   if (!c) notFound();
@@ -141,6 +149,33 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
           <div className="label">Description</div>
           <div className="whitespace-pre-wrap">{c.description}</div>
         </div>
+      )}
+
+      {c.filings.length > 0 && (
+        <section className="card p-6">
+          <h2 className="mb-4 text-lg font-semibold">Court filings</h2>
+          <ul className="divide-y divide-slate-100">
+            {c.filings.map((f) => (
+              <li key={f.id} className="flex items-start justify-between gap-4 py-2 text-sm">
+                <div>
+                  <div className="flex items-center gap-2">
+                    {!f.reviewedAt && <span className="badge bg-amber-100 text-amber-800">new</span>}
+                    <span className="font-medium">{f.docketText || f.subject || "(no subject)"}</span>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {format(f.receivedAt, "MMM d, yyyy h:mm a")}
+                    {f.docNumber && ` · Doc #${f.docNumber}`}
+                  </div>
+                </div>
+                {!f.reviewedAt && (
+                  <form action={markFilingReviewed.bind(null, f.id, c.id)}>
+                    <button className="btn-ghost" type="submit">Mark reviewed</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

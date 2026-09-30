@@ -54,7 +54,46 @@ Open <http://127.0.0.1:3000>.
 - **Gmail sync**: each case has a "Sync from Gmail" button. It searches your inbox for messages to/from the client's email address over the last year and links them to the case. Only headers (subject, from, to, date) are stored locally — the message body is never saved.
 - **Calendar sync**: the Calendar page fetches your next 90 days of events. You assign each event to a case with the dropdown.
 - **Documents**: uploaded files live encrypted in `./storage/documents/` on disk. Max 25MB per file.
+- **Court filing alerts**: see [below](#court-filing-alerts). Filing notices land on the Filings page, the dashboard, and the matching case.
 - **Database**: SQLite file at `./dev.db`. Back it up by copying the file (along with `.env`, since the encryption key lives there).
+
+## Court filing alerts
+
+Get a notification the moment a filing hits one of your cases, using Apple Mail.
+
+Courts already email attorneys of record on every filing (federal CM/ECF "Notice of Electronic Filing", and most state e-filing systems). An Apple Mail rule catches those emails as they arrive, pops a macOS alert, and hands the notice to Case Manager. The app matches it to a case by case number, logs it under **Court filings** on that case, and adds a "Review filing" task.
+
+### Setup (Mac)
+
+1. Run `openssl rand -hex 32`, paste the result into `FILING_INGEST_TOKEN` in `.env`, and restart the app.
+2. Make sure each case has its **case number** filled in (e.g. `1:24-cv-01234`). Federal numbers match regardless of judge initials or leading zeros.
+3. Install the script:
+   ```bash
+   mkdir -p ~/Library/Application\ Scripts/com.apple.mail
+   cp "scripts/apple-mail/Court Filing Alert.applescript" ~/Library/Application\ Scripts/com.apple.mail/
+   open -e ~/Library/Application\ Scripts/com.apple.mail/"Court Filing Alert.applescript"
+   ```
+   Replace `PASTE_FILING_INGEST_TOKEN_HERE` with the token from step 1 and save.
+4. In Mail → **Settings → Rules → Add Rule**:
+   - Description: `Court filings`
+   - If **any** of the following conditions are met:
+     - `From` `contains` `uscourts.gov` (federal CM/ECF)
+     - add one line per state e-filing sender you receive notices from (e.g. the address on a past "Notification of Service" email)
+   - Perform: **Run AppleScript** → `Court Filing Alert`
+   - Click OK. When Mail asks whether to apply to existing messages, choose **Don't Apply** (or Apply, to backfill your inbox).
+5. The first time it runs, macOS will ask to allow Mail to send notifications — allow it. In System Settings → Notifications → Script Editor / Mail, set the style to **Alerts** so they stay on screen until dismissed.
+
+Test it: forward yourself an old NEF from the court sender, or select one in Mail and choose **Message → Apply Rules**.
+
+### On your iPhone
+
+iOS Mail can't run scripts, so the Mac is what feeds Case Manager. For an instant alert on your phone too, add each court sender as a **VIP** in iOS Mail (open a notice → tap the sender → Add to VIP) and turn on VIP notifications in Settings → Notifications → Mail.
+
+### Limits
+
+- Mail rules only run while Mail is open on a Mac that's awake. If the Mac sleeps, notices are processed (with their real received time) when Mail next checks mail. Rules on an iCloud account run on the Mac, not on the server.
+- Only what's in the email is captured: case number, document number, and docket text. The document link is not stored — open the original email to view it (mind CM/ECF's one free look).
+- Anyone can spoof a `From` address. Treat an alert as "go check the docket", not as the docket itself.
 
 ## Security
 
@@ -67,6 +106,7 @@ This app is built for solo use with confidential client data. Here's what is and
 - **OAuth tokens encrypted at rest.** The Google access/refresh tokens stored in `dev.db` are AES-256-GCM encrypted with a key derived from `AUTH_SECRET`. Someone with just `dev.db` cannot use them.
 - **Documents encrypted at rest.** Uploaded files are AES-256-GCM encrypted before being written to disk. Filenames on disk are random; the original filename only appears in the (encrypted-token-protected) DB.
 - **No email body cached.** Gmail sync stores subject/from/to/date headers and the Gmail message ID — never the body or snippet.
+- **Filing ingest is token-protected.** `/api/filings/ingest` only accepts requests carrying `FILING_INGEST_TOKEN`, and is disabled when it's blank. Only parsed docket text is stored, not the full email.
 - **Sign-in allowlist.** Only emails in `ALLOWED_EMAILS` can sign in.
 - **Short sessions.** Sessions expire after 8 hours of activity.
 - **Security headers.** CSP, X-Frame-Options, Referrer-Policy, and no-camera/mic/geo set on every response.

@@ -85,6 +85,7 @@ model Case {
   emails       EmailMessage[]
   events       CalendarEvent[]
   documents    Document[]
+  filings      Filing[]
 }
 
 model Document {
@@ -156,4 +157,21 @@ model CalendarEvent {
   case          Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// A court filing notice (e.g. a CM/ECF "Notice of Electronic Filing") that
+// arrived by email and was forwarded here by the Apple Mail rule script.
+model Filing {
+  id          String    @id @default(cuid())
+  messageId   String    @unique
+  fromAddr    String?
+  subject     String?
+  caseNumber  String?
+  docNumber   String?
+  docketText  String?
+  receivedAt  DateTime  @default(now())
+  reviewedAt  DateTime?
+  caseId      String?
+  case        Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
 }
