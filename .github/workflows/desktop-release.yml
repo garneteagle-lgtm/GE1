@@ -1,0 +1,71 @@
+name: Release Letterhead desktop app (Windows)
+
+# Builds the Windows installer and publishes it to a GitHub Release, so there's
+# a permanent download link. Run it two ways:
+#   - From the "Actions" tab: pick this workflow -> "Run workflow". It releases
+#     the version in desktop/package.json (e.g. v1.0.0).
+#   - By pushing a git tag like v1.0.1, which releases that version.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (e.g. v1.0.1). Leave blank to use desktop/package.json version."
+        required: false
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ inputs.version }}" ]; then
+            echo "tag=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            v=$(node -p "require('./package.json').version")
+            echo "tag=v$v" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Letterhead ${{ steps.tag.outputs.tag }}
+          files: desktop/dist/*.exe
+          fail_on_unmatched_files: true
+          body: |
+            **Letterhead — standalone desktop app for Windows.**
+
+            Download the `.exe` below and run it to install. A **Letterhead**
+            shortcut is added to your desktop.
+
+            The installer is not code-signed, so Windows SmartScreen may warn you
+            the first time — click **More info → Run anyway**.
