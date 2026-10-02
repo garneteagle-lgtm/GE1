@@ -1,0 +1,41 @@
+{
+  "name": "letterhead-desktop",
+  "version": "1.0.0",
+  "description": "Letterhead letter generator — paste text, get a PDF on your firm's letterhead.",
+  "main": "main.js",
+  "author": "Daniel L. Martin",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis",
+    "dist:dir": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.letterhead.desktop",
+    "productName": "Letterhead",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "assets/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Letterhead"
+    }
+  }
+}

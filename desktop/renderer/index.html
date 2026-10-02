@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Letterhead</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ---------------- Editor panel ---------------- -->
+      <aside class="panel">
+        <div class="panel-head">
+          <h1>Letterhead</h1>
+          <button id="btn-settings" class="btn btn-ghost" type="button">Edit letterhead</button>
+        </div>
+
+        <!-- Letter fields -->
+        <section id="letter-fields" class="fields">
+          <label class="field">
+            <span class="label">Date</span>
+            <input id="f-date" class="input" type="text" />
+          </label>
+
+          <label class="field">
+            <span class="label">Delivery line</span>
+            <input id="f-delivery" class="input" list="delivery-list" placeholder="e.g. VIA ELECTRONIC MAIL (optional)" />
+            <datalist id="delivery-list">
+              <option value="VIA ELECTRONIC MAIL"></option>
+              <option value="VIA U.S. MAIL"></option>
+              <option value="VIA CERTIFIED MAIL"></option>
+              <option value="VIA FACSIMILE"></option>
+              <option value="HAND DELIVERED"></option>
+            </datalist>
+          </label>
+
+          <label class="field">
+            <span class="label">Recipient (name &amp; address)</span>
+            <textarea id="f-recipient" class="input area" rows="3" placeholder="John Smith&#10;456 Oak Avenue&#10;West Palm Beach, FL 33401"></textarea>
+          </label>
+
+          <label class="field">
+            <span class="label">Re:</span>
+            <input id="f-re" class="input" placeholder="Brooks v. Perdue, Case # 2025-017243-FC-04" />
+          </label>
+
+          <label class="field">
+            <span class="label">Salutation</span>
+            <input id="f-salutation" class="input" placeholder="Auto: Dear [recipient]," />
+          </label>
+
+          <label class="field">
+            <span class="label">Letter body — paste your text here</span>
+            <textarea id="f-body" class="input area mono" rows="10" placeholder="Paste or type the letter text. Leave a blank line between paragraphs."></textarea>
+          </label>
+
+          <div class="row">
+            <label class="field">
+              <span class="label">Closing</span>
+              <input id="f-closing" class="input" />
+            </label>
+            <label class="field">
+              <span class="label">Signature name</span>
+              <input id="f-signname" class="input" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="label">Copy to (xc:)</span>
+            <input id="f-copyto" class="input" placeholder="Client (optional)" />
+          </label>
+
+          <label class="check">
+            <input id="f-enclosure" type="checkbox" />
+            <span>Note enclosure</span>
+          </label>
+
+          <div class="actions">
+            <button id="btn-export" class="btn btn-primary" type="button">Export to PDF…</button>
+            <span id="status" class="status"></span>
+          </div>
+        </section>
+
+        <!-- Letterhead settings -->
+        <section id="settings-fields" class="fields hidden">
+          <p class="hint">Saved on this computer. The logo appears at the top of every letter and the address bar at the bottom.</p>
+
+          <div class="field">
+            <span class="label">Logo</span>
+            <div class="logo-row">
+              <div class="logo-preview"><img id="logo-img" alt="logo" /></div>
+              <div class="logo-buttons">
+                <button id="btn-logo" class="btn btn-outline" type="button">Choose image…</button>
+                <button id="btn-logo-reset" class="btn btn-ghost small" type="button">Reset to default</button>
+              </div>
+            </div>
+          </div>
+
+          <label class="field">
+            <span class="label">Firm name (used if no logo)</span>
+            <input id="s-firmname" class="input" />
+          </label>
+
+          <label class="field">
+            <span class="label">Footer address line</span>
+            <input id="s-footer" class="input" />
+          </label>
+
+          <div class="row3">
+            <label class="field">
+              <span class="label">Phone</span>
+              <input id="s-phone" class="input" />
+            </label>
+            <label class="field">
+              <span class="label">Fax</span>
+              <input id="s-fax" class="input" />
+            </label>
+            <label class="field">
+              <span class="label">Email</span>
+              <input id="s-email" class="input" />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="field">
+              <span class="label">Accent color (PHONE / FAX)</span>
+              <input id="s-accent" class="input color" type="color" />
+            </label>
+            <label class="field">
+              <span class="label">Default closing</span>
+              <input id="s-closing" class="input" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="label">Default signature name</span>
+            <input id="s-signname" class="input" />
+          </label>
+
+          <div class="actions">
+            <button id="btn-save-settings" class="btn btn-primary" type="button">Save letterhead</button>
+            <button id="btn-cancel-settings" class="btn btn-ghost" type="button">Back to letter</button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- ---------------- Live preview ---------------- -->
+      <main class="preview-wrap">
+        <div id="preview" class="preview"></div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

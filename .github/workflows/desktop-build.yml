@@ -1,0 +1,43 @@
+name: Build Letterhead desktop app (Windows)
+
+# Builds the Windows installer for the standalone Letterhead app.
+# Run it from the GitHub "Actions" tab (Run workflow), or it runs automatically
+# when files under desktop/ change on this branch.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ["claude/letterhead-formatter-u31w1n"]
+    paths: ["desktop/**", ".github/workflows/desktop-build.yml"]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run dist
+        env:
+          # Skip code signing (no certificate configured).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Letterhead-Windows-Installer
+          path: |
+            desktop/dist/*.exe
+          if-no-files-found: error

@@ -1,0 +1,138 @@
+* { box-sizing: border-box; }
+
+:root {
+  --ink: #0b1320;
+  --border: #cbd5e1;
+  --muted: #64748b;
+  --bg: #f1f5f9;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  height: 100vh;
+}
+
+/* ---- Editor panel ---- */
+.panel {
+  overflow-y: auto;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 18px 18px 40px;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.panel-head h1 { font-size: 18px; margin: 0; }
+
+.fields { display: flex; flex-direction: column; gap: 12px; }
+.fields.hidden { display: none; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--muted);
+}
+.input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #fff;
+  color: var(--ink);
+}
+.input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.area { resize: vertical; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+.input.color { height: 38px; padding: 2px; cursor: pointer; }
+
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; }
+
+.actions { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.status { font-size: 12px; color: var(--muted); }
+
+.hint { font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+
+.logo-row { display: flex; gap: 14px; align-items: center; }
+.logo-preview {
+  width: 220px; height: 84px;
+  border: 1px solid #e2e8f0; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; padding: 6px;
+}
+.logo-preview img { max-width: 100%; max-height: 100%; }
+.logo-buttons { display: flex; flex-direction: column; gap: 6px; }
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer; transition: background .15s;
+}
+.btn.small { padding: 4px 8px; font-size: 12px; }
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-primary:hover { background: #1e293b; }
+.btn-outline { background: #fff; border-color: var(--border); color: #1e293b; }
+.btn-outline:hover { background: #f8fafc; }
+.btn-ghost { background: transparent; color: #475569; }
+.btn-ghost:hover { background: #f1f5f9; }
+
+/* ---- Preview ---- */
+.preview-wrap { overflow: auto; padding: 28px; }
+.preview { display: flex; justify-content: center; }
+
+/* The on-screen letter sheet (US Letter at ~96dpi). */
+.letter-sheet {
+  width: 8.5in;
+  min-height: 11in;
+  padding: 0.5in 1in 0.4in 1in;
+  background: #fff;
+  color: #000;
+  font-family: "Calibri", "Carlito", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  font-size: 12pt;
+  line-height: 1.3;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 20px rgba(0,0,0,.10);
+  display: flex;
+  flex-direction: column;
+}
+
+.lh-logo { display: flex; justify-content: center; margin-bottom: 32px; }
+.lh-logo img { max-width: 4in; height: auto; }
+.lh-firmname { text-align: center; font-size: 20pt; font-weight: 700; margin-bottom: 24px; }
+.lh-body { flex: 1 1 auto; }
+.lh-date { text-align: center; font-weight: 700; margin-bottom: 24px; }
+.lh-delivery { font-weight: 700; margin-bottom: 16px; }
+.lh-recip { margin-bottom: 16px; }
+.lh-re { margin-bottom: 16px; }
+.lh-re b { font-weight: 700; }
+.lh-salutation { margin-bottom: 16px; }
+.lh-para { margin: 0 0 16px; white-space: pre-wrap; }
+.lh-placeholder { color: #94a3b8; font-style: italic; }
+.lh-sig { text-align: center; margin-top: 24px; }
+.lh-sig-space { height: 64px; }
+.lh-notations { margin-top: 32px; }
+.lh-footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 10pt;
+  text-transform: uppercase;
+  line-height: 1.35;
+}
