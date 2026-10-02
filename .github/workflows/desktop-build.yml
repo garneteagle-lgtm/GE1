@@ -1,20 +1,30 @@
 name: Build Letterhead desktop app (Windows)
 
-# Builds the Windows installer for the standalone Letterhead app.
-# Run it from the GitHub "Actions" tab (Run workflow), or it runs automatically
-# when files under desktop/ change on this branch.
+# Builds the Windows installer for the standalone Letterhead app AND publishes
+# it to a GitHub Release, so there's always a permanent download link under the
+# repo's "Releases" page.
+#
+# Runs automatically on every push that touches desktop/, on a v* tag, or
+# manually from the Actions tab. The release tag is the version in
+# desktop/package.json (e.g. v1.0.0), or the pushed git tag. Bump the version
+# in desktop/package.json to publish a new, separate release.
 
 on:
   workflow_dispatch: {}
   push:
     branches: ["claude/letterhead-formatter-u31w1n"]
     paths: ["desktop/**", ".github/workflows/desktop-build.yml"]
+    tags: ["v*"]
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
     runs-on: windows-latest
     defaults:
       run:
+        shell: bash
         working-directory: desktop
     steps:
       - name: Checkout
@@ -25,19 +35,43 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            v=$(node -p "require('./package.json').version")
+            echo "tag=v$v" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
         run: npm install
 
       - name: Build Windows installer
         run: npm run dist
         env:
-          # Skip code signing (no certificate configured).
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload installer
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: Letterhead-Windows-Installer
-          path: |
-            desktop/dist/*.exe
+          path: desktop/dist/*.exe
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Letterhead ${{ steps.tag.outputs.tag }}
+          files: desktop/dist/*.exe
+          fail_on_unmatched_files: true
+          body: |
+            **Letterhead — standalone desktop app for Windows.**
+
+            Download the `.exe` under **Assets** below and run it to install. A
+            **Letterhead** shortcut is added to your desktop.
+
+            The installer is not code-signed, so Windows SmartScreen may warn you
+            the first time — click **More info → Run anyway**.

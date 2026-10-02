@@ -7,27 +7,22 @@ no sign-in, nothing leaves your computer.
 
 ## Get the installer (no developer tools needed)
 
-The app is built for you automatically on GitHub. There are two ways to get it.
-
-### Option A — a permanent download link (GitHub Release)
-
-Every released version is published on the repo's **Releases** page with a
-stable download link you can bookmark.
+Every build is published automatically to the repo's **Releases** page with a
+permanent download link you can bookmark:
 
 1. Open the repo on GitHub → **Releases** (right-hand sidebar).
 2. Open the latest **Letterhead vX.Y.Z** release.
 3. Under **Assets**, download `Letterhead Setup <version>.exe`.
 4. Run it on your Lenovo — a **Letterhead** desktop shortcut is created.
 
-To cut a new release: in the **Actions** tab run **"Release Letterhead desktop
-app (Windows)"**, or push a git tag like `v1.0.1`. Bump the `version` in
-`desktop/package.json` before releasing a new build so the tag is unique.
+The release is rebuilt and refreshed whenever files under `desktop/` change (or
+when you run the **"Build Letterhead desktop app (Windows)"** workflow from the
+**Actions** tab). To publish a new, separate version, bump `version` in
+`desktop/package.json` — the release tag follows it (e.g. `v1.0.1`).
 
-### Option B — a one-off build (Actions artifact)
-
-1. Go to the **Actions** tab → **Build Letterhead desktop app (Windows)**.
-2. Click **Run workflow**, wait a few minutes, open the run.
-3. Download the **Letterhead-Windows-Installer** artifact and unzip it.
+The same workflow also attaches the installer as a run **artifact**
+(**Letterhead-Windows-Installer**) if you prefer grabbing it from the Actions
+run instead of the Releases page.
 
 > The installer is **not code-signed**, so Windows SmartScreen may warn you the
 > first time ("Windows protected your PC"). Click **More info → Run anyway** —
