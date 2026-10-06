@@ -126,8 +126,16 @@ html, body {
 .btn-ghost:hover { background: #f1f5f9; }
 
 /* ---- Preview ---- */
-.preview-wrap { overflow: auto; padding: 28px; }
+.preview-wrap { overflow: auto; padding: 0 28px 28px; }
+.preview-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; margin-bottom: 4px;
+  background: var(--bg);
+}
 .preview { display: flex; justify-content: center; }
+.lh-body.editing { outline: 2px dashed #93c5fd; outline-offset: 10px; border-radius: 2px; }
+.lh-body.editing:focus { outline-color: #3b82f6; }
 
 /* The on-screen letter sheet (US Letter at ~96dpi). */
 .letter-sheet {
@@ -150,6 +158,8 @@ html, body {
 .lh-body { flex: 1 1 auto; }
 .lh-date { text-align: center; font-weight: 700; margin-bottom: 24px; }
 .lh-delivery { font-weight: 700; margin-bottom: 16px; }
+.lh-delivery-sub { font-weight: 400; }
+.lh-re i { font-style: italic; }
 .lh-recip { margin-bottom: 16px; }
 .lh-re { margin-bottom: 16px; }
 .lh-re b { font-weight: 700; }

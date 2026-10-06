@@ -65,6 +65,7 @@ let settings = null;
 let defaultLogoDataUrl = "";
 let contacts = [];
 let editingContactId = null;
+let directEdit = false; // true while the user edits inside the preview
 
 const $ = (id) => document.getElementById(id);
 
@@ -81,6 +82,7 @@ function currentLetterValues() {
   return {
     date: $("f-date").value,
     delivery: $("f-delivery").value.trim(),
+    recipientEmail: $("f-recipient-email").value.trim(),
     recipient,
     re: $("f-re").value.trim(),
     salutation,
@@ -111,8 +113,15 @@ function buildLetterInner(v) {
   const recipBlock = v.recipient.trim()
     ? `<div class="lh-recip">${escLines(v.recipient)}</div>`
     : "";
-  const reBlock = v.re ? `<div class="lh-re"><b>Re:</b>&nbsp;&nbsp;${esc(v.re)}</div>` : "";
-  const deliveryBlock = v.delivery ? `<div class="lh-delivery">${esc(v.delivery)}</div>` : "";
+  const reBlock = v.re
+    ? `<div class="lh-re"><b>Re:</b>&nbsp;&nbsp;<i>${esc(v.re)}</i></div>`
+    : "";
+  const deliveryBlock =
+    v.delivery || v.recipientEmail
+      ? `<div class="lh-delivery">${v.delivery ? `<div>${esc(v.delivery)}</div>` : ""}${
+          v.recipientEmail ? `<div class="lh-delivery-sub">${esc(v.recipientEmail)}</div>` : ""
+        }</div>`
+      : "";
 
   const notations = [];
   if (v.copyTo) notations.push(`<div>xc:&nbsp;&nbsp;${esc(v.copyTo)}</div>`);
@@ -174,6 +183,7 @@ const EXPORT_CSS = `
   .lh-body { flex: 1 1 auto; }
   .lh-date { text-align: center; font-weight: 700; margin-bottom: 24px; }
   .lh-delivery { font-weight: 700; margin-bottom: 16px; }
+  .lh-delivery-sub { font-weight: 400; }
   .lh-recip { margin-bottom: 16px; }
   .lh-re { margin-bottom: 16px; }
   .lh-salutation { margin-bottom: 16px; }
@@ -194,6 +204,74 @@ function buildExportHtml(v) {
 
 function renderPreview() {
   $("preview").innerHTML = buildLetterInner(currentLetterValues());
+  if (directEdit) {
+    const bodyEl = $("preview").querySelector(".lh-body");
+    if (bodyEl) {
+      bodyEl.setAttribute("contenteditable", "true");
+      bodyEl.classList.add("editing");
+    }
+  }
+}
+
+// ---------- direct (in-document) editing ----------
+
+function elText(el) {
+  if (!el) return "";
+  return el.innerText != null ? el.innerText : el.textContent;
+}
+
+/** Read the edited preview DOM back into the letter-values shape, for export. */
+function domToValues() {
+  const root = $("preview");
+  const q = (sel) => root.querySelector(sel);
+  const bodyEl = q(".lh-body");
+
+  const deliveryLines = elText(q(".lh-delivery")).split("\n").map((s) => s.trim()).filter(Boolean);
+  const reEl = q(".lh-re");
+  const re = reEl ? elText(reEl).replace(/^\s*Re:\s*/i, "").trim() : "";
+
+  // Body = everything between the salutation and the signature block.
+  const paras = [];
+  const sal = q(".lh-salutation");
+  const sig = q(".lh-sig");
+  let n = sal ? sal.nextElementSibling : bodyEl ? bodyEl.firstElementChild : null;
+  while (n && n !== sig) {
+    if (!n.classList.contains("lh-notations")) {
+      const t = elText(n).replace(/\s+$/, "");
+      if (t.trim()) paras.push(t);
+    }
+    n = n.nextElementSibling;
+  }
+
+  const sigLines = elText(sig).split("\n").map((s) => s.trim()).filter(Boolean);
+  const notationLines = elText(q(".lh-notations")).split("\n").map((s) => s.trim()).filter(Boolean);
+  let copyTo = "";
+  let enclosure = false;
+  notationLines.forEach((l) => {
+    if (/^xc:/i.test(l)) copyTo = l.replace(/^xc:\s*/i, "").trim();
+    else if (/^enclosure$/i.test(l)) enclosure = true;
+  });
+
+  return {
+    date: elText(q(".lh-date")).trim(),
+    delivery: deliveryLines[0] || "",
+    recipientEmail: deliveryLines[1] || "",
+    recipient: elText(q(".lh-recip")).replace(/\s+$/, ""),
+    re,
+    salutation: elText(q(".lh-salutation")).trim(),
+    body: paras.join("\n\n"),
+    closing: sigLines[0] || "",
+    signName: sigLines.length > 1 ? sigLines[sigLines.length - 1] : "",
+    copyTo,
+    enclosure,
+  };
+}
+
+function buildExportHtmlFromDom() {
+  const sheet = $("preview").querySelector(".letter-sheet").cloneNode(true);
+  sheet.querySelectorAll("[contenteditable]").forEach((e) => e.removeAttribute("contenteditable"));
+  sheet.querySelectorAll(".editing").forEach((e) => e.classList.remove("editing"));
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${EXPORT_CSS}</style></head><body>${sheet.outerHTML}</body></html>`;
 }
 
 // ---------- settings UI ----------
@@ -235,19 +313,24 @@ function findContactByName(name) {
 /** Save the current letter's recipient as a contact if it's new. Returns a status word. */
 async function maybeSaveCurrentContact() {
   const name = $("f-recipient-name").value.trim();
+  const email = $("f-recipient-email").value.trim();
   const address = $("f-recipient-address").value.trim();
   if (!name) return "no-name";
   const existing = findContactByName(name);
   if (existing) {
-    // Keep an address if one was added to a previously bare contact.
-    if (!existing.address && address) {
-      existing.address = address;
-      await saveContacts();
-      return "updated";
-    }
+    // Fill in details that were missing on a previously saved contact.
+    let changed = false;
+    if (!existing.address && address) { existing.address = address; changed = true; }
+    if (!existing.email && email) { existing.email = email; changed = true; }
+    if (changed) { await saveContacts(); return "updated"; }
     return "exists";
   }
-  contacts.push({ id: "c" + Date.now() + Math.random().toString(36).slice(2, 6), name, address });
+  contacts.push({
+    id: "c" + Date.now() + Math.random().toString(36).slice(2, 6),
+    name,
+    email,
+    address,
+  });
   await saveContacts();
   return "added";
 }
@@ -265,6 +348,7 @@ function renderContactsList() {
       <div class="contact-row" data-id="${esc(c.id)}">
         <div class="contact-info">
           <div class="contact-name">${esc(c.name || "")}</div>
+          ${c.email ? `<div class="contact-addr">${esc(c.email)}</div>` : ""}
           ${c.address ? `<div class="contact-addr">${escLines(c.address)}</div>` : ""}
         </div>
         <div class="contact-ops">
@@ -279,6 +363,7 @@ function renderContactsList() {
 function resetContactForm() {
   editingContactId = null;
   $("c-name").value = "";
+  $("c-email").value = "";
   $("c-address").value = "";
   $("contact-form-label").textContent = "Add a contact";
   $("btn-add-contact").textContent = "Add contact";
@@ -286,6 +371,7 @@ function resetContactForm() {
 
 async function addOrUpdateContact() {
   const name = $("c-name").value.trim();
+  const email = $("c-email").value.trim();
   const address = $("c-address").value.trim();
   if (!name) {
     $("c-name").focus();
@@ -295,12 +381,20 @@ async function addOrUpdateContact() {
     const c = contacts.find((x) => x.id === editingContactId);
     if (c) {
       c.name = name;
+      c.email = email;
       c.address = address;
     }
   } else if (!findContactByName(name)) {
-    contacts.push({ id: "c" + Date.now() + Math.random().toString(36).slice(2, 6), name, address });
+    contacts.push({
+      id: "c" + Date.now() + Math.random().toString(36).slice(2, 6),
+      name,
+      email,
+      address,
+    });
   } else {
-    findContactByName(name).address = address;
+    const c = findContactByName(name);
+    c.email = email;
+    c.address = address;
   }
   await saveContacts();
   resetContactForm();
@@ -312,6 +406,7 @@ function editContact(id) {
   if (!c) return;
   editingContactId = id;
   $("c-name").value = c.name || "";
+  $("c-email").value = c.email || "";
   $("c-address").value = c.address || "";
   $("contact-form-label").textContent = "Edit contact";
   $("btn-add-contact").textContent = "Update contact";
@@ -336,6 +431,7 @@ function hideSuggest() {
 
 function pickContact(c) {
   $("f-recipient-name").value = c.name || "";
+  $("f-recipient-email").value = c.email || "";
   $("f-recipient-address").value = c.address || "";
   hideSuggest();
   renderPreview();
@@ -418,12 +514,12 @@ function reportResult(res, status) {
 }
 
 async function exportPdf() {
-  const v = currentLetterValues();
+  const v = directEdit ? domToValues() : currentLetterValues();
   const status = $("status");
   status.textContent = "Preparing PDF…";
   try {
     const res = await window.letterhead.exportPdf({
-      html: buildExportHtml(v),
+      html: directEdit ? buildExportHtmlFromDom() : buildExportHtml(v),
       defaultFileName: defaultFileName(v, "pdf"),
     });
     if (res && res.saved) await maybeSaveCurrentContact();
@@ -434,7 +530,7 @@ async function exportPdf() {
 }
 
 async function exportDocx() {
-  const v = currentLetterValues();
+  const v = directEdit ? domToValues() : currentLetterValues();
   const status = $("status");
   status.textContent = "Preparing Word document…";
   try {
@@ -469,10 +565,33 @@ async function init() {
   $("f-closing").value = settings.closing || "Very truly yours,";
   $("f-signname").value = settings.signName || "";
 
-  // Live preview on any input.
+  // Live preview on any input (unless the user is editing in the document).
   document
     .querySelectorAll("#letter-fields input, #letter-fields textarea")
-    .forEach((el) => el.addEventListener("input", renderPreview));
+    .forEach((el) =>
+      el.addEventListener("input", () => {
+        if (!directEdit) renderPreview();
+      }),
+    );
+
+  // Toggle in-document editing.
+  $("toggle-edit").addEventListener("change", (e) => {
+    if (e.target.checked) {
+      directEdit = true;
+      renderPreview(); // start from a clean render, then make it editable
+      const bodyEl = $("preview").querySelector(".lh-body");
+      if (bodyEl) bodyEl.focus();
+      $("edit-hint").textContent = "Click into the letter and type. Exports use what you see here.";
+    } else {
+      if (!confirm("Turn off in-document editing? Your typed changes here will be rebuilt from the form fields.")) {
+        e.target.checked = true;
+        return;
+      }
+      directEdit = false;
+      $("edit-hint").textContent = "";
+      renderPreview();
+    }
+  });
 
   // Navigation + settings buttons.
   $("btn-settings").addEventListener("click", () => showView("settings"));

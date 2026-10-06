@@ -149,7 +149,27 @@ async function buildLetterDocx({ values, settings }) {
   const body = [];
 
   body.push(para(values.date, { align: AlignmentType.CENTER, bold: true }));
-  if (values.delivery) body.push(para(values.delivery, { bold: true }));
+
+  // Delivery line, optionally with the recipient's email on a second, single-
+  // spaced line directly beneath it.
+  if (values.delivery || values.recipientEmail) {
+    const deliveryChildren = [];
+    if (values.delivery) {
+      deliveryChildren.push(new TextRun({ font: FONT, size: SIZE_BODY, bold: true, text: values.delivery }));
+    }
+    if (values.recipientEmail) {
+      deliveryChildren.push(
+        new TextRun({
+          font: FONT,
+          size: SIZE_BODY,
+          break: deliveryChildren.length ? 1 : 0,
+          text: values.recipientEmail,
+        }),
+      );
+    }
+    body.push(new Paragraph({ spacing: { after: AFTER, line: 276 }, children: deliveryChildren }));
+  }
+
   if (values.recipient && values.recipient.trim()) {
     body.push(para(values.recipient, {}));
   }
@@ -159,7 +179,8 @@ async function buildLetterDocx({ values, settings }) {
         spacing: { after: AFTER, line: 276 },
         children: [
           new TextRun({ font: FONT, size: SIZE_BODY, bold: true, text: "Re:" }),
-          new TextRun({ font: FONT, size: SIZE_BODY, text: "  " + values.re }),
+          new TextRun({ font: FONT, size: SIZE_BODY, text: "  " }),
+          new TextRun({ font: FONT, size: SIZE_BODY, italics: true, text: values.re }),
         ],
       }),
     );

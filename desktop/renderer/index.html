@@ -51,6 +51,11 @@
           </div>
 
           <div class="field">
+            <span class="label">Recipient email (shown under the delivery line)</span>
+            <input id="f-recipient-email" class="input" placeholder="jsmith@example.com" />
+          </div>
+
+          <div class="field">
             <span class="label">Recipient address</span>
             <textarea id="f-recipient-address" class="input area" rows="3" placeholder="456 Oak Avenue&#10;West Palm Beach, FL 33401"></textarea>
             <div class="recip-actions">
@@ -177,6 +182,7 @@
           <div class="field">
             <span class="label" id="contact-form-label">Add a contact</span>
             <input id="c-name" class="input" placeholder="Full name" />
+            <input id="c-email" class="input" placeholder="Email (optional)" />
             <textarea id="c-address" class="input area" rows="3" placeholder="Street&#10;City, ST ZIP"></textarea>
             <div class="actions">
               <button id="btn-add-contact" class="btn btn-primary" type="button">Add contact</button>
@@ -194,6 +200,13 @@
 
       <!-- ---------------- Live preview ---------------- -->
       <main class="preview-wrap">
+        <div class="preview-bar">
+          <label class="check">
+            <input type="checkbox" id="toggle-edit" />
+            Edit directly in the document
+          </label>
+          <span id="edit-hint" class="status"></span>
+        </div>
         <div id="preview" class="preview"></div>
       </main>
     </div>

@@ -35,12 +35,15 @@ run instead of the Releases page.
 2. Click **Edit letterhead** once to confirm your logo, footer address, phone/fax,
    and signature. (It's pre-filled with the firm's details; everything is saved
    on your computer.) You can upload a different logo here.
-3. Back on the letter screen, fill in the date and delivery line, then set the
-   **recipient**: start typing a name to pick a saved **contact** (the address
-   fills in automatically), or type a new name and address. Add the `Re:` line,
-   then **paste the body** — it's auto-formatted into indented paragraphs. (Use
-   **Reformat** to re-run it, or **Tab** to indent manually.) Optionally set
-   `xc:` and check **Note enclosure**.
+3. Back on the letter screen, fill in the date and delivery line (add a
+   **recipient email** to print it on a second line directly under the delivery
+   line). Set the **recipient**: start typing a name to pick a saved **contact**
+   (email + address fill in automatically), or type a new one. The `Re:` line is
+   automatically italicized. **Paste the body** — it's auto-formatted into
+   indented paragraphs (use **Reformat** to re-run it, or **Tab** to indent
+   manually). Optionally set `xc:` and check **Note enclosure**.
+   To tweak wording in place, tick **Edit directly in the document** above the
+   preview and type right on the letter; exports then use exactly what you see.
 4. Click **Export to PDF…** or **Export to Word…**, **browse to the folder you
    want**, name the file, and save. The finished file opens in its folder.
    A recipient you haven't saved before is **added to your contacts automatically**.
