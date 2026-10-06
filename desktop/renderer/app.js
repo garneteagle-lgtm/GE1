@@ -26,6 +26,31 @@ function toParagraphs(text) {
     .filter((p) => p.trim().length > 0);
 }
 
+/**
+ * Clean up pasted/typed body text into indented block paragraphs:
+ * - paragraphs separated by blank lines are de-wrapped (stray line breaks joined)
+ * - with no blank lines, each line is treated as its own paragraph
+ * - every paragraph gets a leading tab (first-line indent) and a blank line after
+ */
+function formatBodyText(raw) {
+  let t = String(raw || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  t = t
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+$/, ""))
+    .join("\n");
+  const hasBlank = /\n[ \t]*\n/.test(t);
+  let paras;
+  if (hasBlank) {
+    paras = t
+      .split(/\n[ \t]*\n/)
+      .map((block) => block.split("\n").map((s) => s.trim()).filter(Boolean).join(" "));
+  } else {
+    paras = t.split("\n").map((s) => s.trim());
+  }
+  paras = paras.map((p) => p.replace(/[ \t]{2,}/g, " ").trim()).filter(Boolean);
+  return paras.map((p) => "\t" + p).join("\n\n");
+}
+
 function sanitizeFilename(s) {
   return String(s || "")
     .replace(/[\\/:*?"<>|]+/g, " ")
@@ -38,6 +63,8 @@ function sanitizeFilename(s) {
 
 let settings = null;
 let defaultLogoDataUrl = "";
+let contacts = [];
+let editingContactId = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -46,10 +73,11 @@ function effectiveLogo() {
 }
 
 function currentLetterValues() {
-  const recipient = $("f-recipient").value;
-  const firstLine = recipient.split("\n")[0].trim();
+  const name = $("f-recipient-name").value.trim();
+  const address = $("f-recipient-address").value;
+  const recipient = [name, address].map((s) => s.trim()).filter(Boolean).join("\n");
   const typed = $("f-salutation").value.trim();
-  const salutation = typed || (firstLine ? `Dear ${firstLine},` : "To whom it may concern,");
+  const salutation = typed || (name ? `Dear ${name},` : "To whom it may concern,");
   return {
     date: $("f-date").value,
     delivery: $("f-delivery").value.trim(),
@@ -184,10 +212,177 @@ function fillSettingsForm() {
   $("logo-img").src = effectiveLogo();
 }
 
-function showSettings(show) {
-  $("letter-fields").classList.toggle("hidden", show);
-  $("settings-fields").classList.toggle("hidden", !show);
-  if (show) fillSettingsForm();
+/** Switch between the "letter", "settings", and "contacts" panels. */
+function showView(view) {
+  $("letter-fields").classList.toggle("hidden", view !== "letter");
+  $("settings-fields").classList.toggle("hidden", view !== "settings");
+  $("contacts-fields").classList.toggle("hidden", view !== "contacts");
+  if (view === "settings") fillSettingsForm();
+  if (view === "contacts") renderContactsList();
+}
+
+// ---------- contacts ----------
+
+function saveContacts() {
+  return window.letterhead.saveContacts(contacts);
+}
+
+function findContactByName(name) {
+  const key = String(name || "").trim().toLowerCase();
+  return contacts.find((c) => (c.name || "").trim().toLowerCase() === key);
+}
+
+/** Save the current letter's recipient as a contact if it's new. Returns a status word. */
+async function maybeSaveCurrentContact() {
+  const name = $("f-recipient-name").value.trim();
+  const address = $("f-recipient-address").value.trim();
+  if (!name) return "no-name";
+  const existing = findContactByName(name);
+  if (existing) {
+    // Keep an address if one was added to a previously bare contact.
+    if (!existing.address && address) {
+      existing.address = address;
+      await saveContacts();
+      return "updated";
+    }
+    return "exists";
+  }
+  contacts.push({ id: "c" + Date.now() + Math.random().toString(36).slice(2, 6), name, address });
+  await saveContacts();
+  return "added";
+}
+
+function renderContactsList() {
+  const box = $("contacts-list");
+  if (!contacts.length) {
+    box.innerHTML = `<p class="hint">No contacts yet.</p>`;
+    return;
+  }
+  const sorted = [...contacts].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  box.innerHTML = sorted
+    .map(
+      (c) => `
+      <div class="contact-row" data-id="${esc(c.id)}">
+        <div class="contact-info">
+          <div class="contact-name">${esc(c.name || "")}</div>
+          ${c.address ? `<div class="contact-addr">${escLines(c.address)}</div>` : ""}
+        </div>
+        <div class="contact-ops">
+          <button class="btn btn-ghost small" data-act="edit" data-id="${esc(c.id)}">Edit</button>
+          <button class="btn btn-ghost small" data-act="del" data-id="${esc(c.id)}">Delete</button>
+        </div>
+      </div>`,
+    )
+    .join("");
+}
+
+function resetContactForm() {
+  editingContactId = null;
+  $("c-name").value = "";
+  $("c-address").value = "";
+  $("contact-form-label").textContent = "Add a contact";
+  $("btn-add-contact").textContent = "Add contact";
+}
+
+async function addOrUpdateContact() {
+  const name = $("c-name").value.trim();
+  const address = $("c-address").value.trim();
+  if (!name) {
+    $("c-name").focus();
+    return;
+  }
+  if (editingContactId) {
+    const c = contacts.find((x) => x.id === editingContactId);
+    if (c) {
+      c.name = name;
+      c.address = address;
+    }
+  } else if (!findContactByName(name)) {
+    contacts.push({ id: "c" + Date.now() + Math.random().toString(36).slice(2, 6), name, address });
+  } else {
+    findContactByName(name).address = address;
+  }
+  await saveContacts();
+  resetContactForm();
+  renderContactsList();
+}
+
+function editContact(id) {
+  const c = contacts.find((x) => x.id === id);
+  if (!c) return;
+  editingContactId = id;
+  $("c-name").value = c.name || "";
+  $("c-address").value = c.address || "";
+  $("contact-form-label").textContent = "Edit contact";
+  $("btn-add-contact").textContent = "Update contact";
+  $("c-name").focus();
+}
+
+async function deleteContact(id) {
+  contacts = contacts.filter((x) => x.id !== id);
+  await saveContacts();
+  if (editingContactId === id) resetContactForm();
+  renderContactsList();
+}
+
+// ---------- recipient autocomplete ----------
+
+let suggestActive = -1;
+
+function hideSuggest() {
+  $("recipient-suggest").classList.add("hidden");
+  suggestActive = -1;
+}
+
+function pickContact(c) {
+  $("f-recipient-name").value = c.name || "";
+  $("f-recipient-address").value = c.address || "";
+  hideSuggest();
+  renderPreview();
+}
+
+function updateSuggest() {
+  const q = $("f-recipient-name").value.trim().toLowerCase();
+  const box = $("recipient-suggest");
+  if (!q) {
+    hideSuggest();
+    return;
+  }
+  const matches = contacts
+    .filter((c) => (c.name || "").toLowerCase().includes(q))
+    .slice(0, 8);
+  // Don't show a single exact match (nothing to pick).
+  if (!matches.length || (matches.length === 1 && matches[0].name.toLowerCase() === q)) {
+    hideSuggest();
+    return;
+  }
+  suggestActive = -1;
+  box.innerHTML = matches
+    .map(
+      (c, i) => `
+      <div class="suggest-item" data-id="${esc(c.id)}" data-i="${i}">
+        <span class="suggest-name">${esc(c.name)}</span>
+        ${c.address ? `<span class="suggest-addr">${esc(c.address.split("\n")[0])}</span>` : ""}
+      </div>`,
+    )
+    .join("");
+  box.classList.remove("hidden");
+}
+
+function moveSuggest(delta) {
+  const items = $("recipient-suggest").querySelectorAll(".suggest-item");
+  if (!items.length) return;
+  suggestActive = (suggestActive + delta + items.length) % items.length;
+  items.forEach((el, i) => el.classList.toggle("active", i === suggestActive));
+}
+
+function chooseActiveSuggest() {
+  const items = $("recipient-suggest").querySelectorAll(".suggest-item");
+  if (suggestActive < 0 || suggestActive >= items.length) return false;
+  const id = items[suggestActive].getAttribute("data-id");
+  const c = contacts.find((x) => x.id === id);
+  if (c) pickContact(c);
+  return true;
 }
 
 async function saveSettingsFromForm() {
@@ -205,7 +400,7 @@ async function saveSettingsFromForm() {
   settings = await window.letterhead.saveSettings(next);
   // Reflect new signature/closing defaults if the letter fields are untouched defaults.
   renderPreview();
-  showSettings(false);
+  showView("letter");
 }
 
 // ---------- export ----------
@@ -231,6 +426,7 @@ async function exportPdf() {
       html: buildExportHtml(v),
       defaultFileName: defaultFileName(v, "pdf"),
     });
+    if (res && res.saved) await maybeSaveCurrentContact();
     reportResult(res, status);
   } catch (err) {
     status.textContent = "Export failed: " + err;
@@ -247,6 +443,7 @@ async function exportDocx() {
       settings: { ...settings, logoDataUrl: effectiveLogo() },
       defaultFileName: defaultFileName(v, "docx"),
     });
+    if (res && res.saved) await maybeSaveCurrentContact();
     reportResult(res, status);
   } catch (err) {
     status.textContent = "Export failed: " + err;
@@ -264,6 +461,7 @@ async function init() {
   const loaded = await window.letterhead.loadSettings();
   settings = loaded.settings;
   defaultLogoDataUrl = loaded.defaultLogoDataUrl || "";
+  contacts = (await window.letterhead.loadContacts()) || [];
 
   // Letter defaults.
   $("f-date").value = todayFormatted();
@@ -276,12 +474,78 @@ async function init() {
     .querySelectorAll("#letter-fields input, #letter-fields textarea")
     .forEach((el) => el.addEventListener("input", renderPreview));
 
-  // Buttons.
-  $("btn-settings").addEventListener("click", () => showSettings(true));
-  $("btn-cancel-settings").addEventListener("click", () => showSettings(false));
+  // Navigation + settings buttons.
+  $("btn-settings").addEventListener("click", () => showView("settings"));
+  $("btn-contacts").addEventListener("click", () => showView("contacts"));
+  $("btn-cancel-settings").addEventListener("click", () => showView("letter"));
   $("btn-save-settings").addEventListener("click", saveSettingsFromForm);
   $("btn-export").addEventListener("click", exportPdf);
   $("btn-export-docx").addEventListener("click", exportDocx);
+
+  // Contacts manager.
+  $("btn-contacts-back").addEventListener("click", () => showView("letter"));
+  $("btn-add-contact").addEventListener("click", addOrUpdateContact);
+  $("btn-contact-clear").addEventListener("click", resetContactForm);
+  $("contacts-list").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    if (btn.getAttribute("data-act") === "edit") editContact(id);
+    else deleteContact(id);
+  });
+
+  // Save the current recipient as a contact from the letter screen.
+  $("btn-save-contact").addEventListener("click", async () => {
+    const status = $("contact-status");
+    const result = await maybeSaveCurrentContact();
+    status.textContent =
+      result === "added" ? "Contact saved." :
+      result === "updated" ? "Contact updated." :
+      result === "exists" ? "Already in contacts." :
+      "Enter a recipient name first.";
+    setTimeout(() => (status.textContent = ""), 2500);
+  });
+
+  // Recipient autocomplete.
+  const nameEl = $("f-recipient-name");
+  nameEl.addEventListener("input", updateSuggest);
+  nameEl.addEventListener("focus", updateSuggest);
+  nameEl.addEventListener("blur", () => setTimeout(hideSuggest, 150));
+  nameEl.addEventListener("keydown", (e) => {
+    if ($("recipient-suggest").classList.contains("hidden")) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); moveSuggest(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moveSuggest(-1); }
+    else if (e.key === "Enter") { if (chooseActiveSuggest()) e.preventDefault(); }
+    else if (e.key === "Escape") { hideSuggest(); }
+  });
+  $("recipient-suggest").addEventListener("mousedown", (e) => {
+    const item = e.target.closest(".suggest-item");
+    if (!item) return;
+    e.preventDefault();
+    const c = contacts.find((x) => x.id === item.getAttribute("data-id"));
+    if (c) pickContact(c);
+  });
+
+  // Auto-format pasted body text.
+  $("f-body").addEventListener("paste", (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    if (!text || (!text.includes("\n") && text.length < 120)) return; // leave small inline pastes alone
+    e.preventDefault();
+    const formatted = formatBodyText(text);
+    if (!document.execCommand("insertText", false, formatted)) {
+      const el = $("f-body");
+      const s = el.selectionStart;
+      el.value = el.value.slice(0, s) + formatted + el.value.slice(el.selectionEnd);
+      el.selectionStart = el.selectionEnd = s + formatted.length;
+    }
+    renderPreview();
+  });
+
+  // Reformat whatever is currently in the body.
+  $("btn-reformat").addEventListener("click", () => {
+    $("f-body").value = formatBodyText($("f-body").value);
+    renderPreview();
+  });
 
   // Tab inserts an indent in the body instead of moving focus.
   $("f-body").addEventListener("keydown", (e) => {

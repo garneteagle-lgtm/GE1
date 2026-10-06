@@ -1,6 +1,6 @@
 {
   "name": "letterhead-desktop",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Letterhead letter generator — paste text, get a PDF on your firm's letterhead.",
   "main": "main.js",
   "author": "Daniel L. Martin",

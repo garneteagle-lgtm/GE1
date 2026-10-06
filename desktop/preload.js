@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld("letterhead", {
   pickLogo: () => ipcRenderer.invoke("logo:pick"),
   exportPdf: (payload) => ipcRenderer.invoke("letter:export", payload),
   exportDocx: (payload) => ipcRenderer.invoke("letter:exportDocx", payload),
+  loadContacts: () => ipcRenderer.invoke("contacts:load"),
+  saveContacts: (list) => ipcRenderer.invoke("contacts:save", list),
 });

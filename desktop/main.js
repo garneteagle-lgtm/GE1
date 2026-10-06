@@ -39,6 +39,24 @@ function writeSettings(settings) {
   return merged;
 }
 
+const CONTACTS_FILE = () => path.join(app.getPath("userData"), "contacts.json");
+
+function readContacts() {
+  try {
+    const list = JSON.parse(fs.readFileSync(CONTACTS_FILE(), "utf8"));
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeContacts(list) {
+  const clean = Array.isArray(list) ? list : [];
+  fs.mkdirSync(path.dirname(CONTACTS_FILE()), { recursive: true });
+  fs.writeFileSync(CONTACTS_FILE(), JSON.stringify(clean, null, 2), "utf8");
+  return clean;
+}
+
 function fileToDataUrl(filePath) {
   const ext = path.extname(filePath).toLowerCase().replace(".", "");
   const mime =
@@ -83,6 +101,9 @@ ipcMain.handle("settings:load", () => {
 });
 
 ipcMain.handle("settings:save", (_e, settings) => writeSettings(settings));
+
+ipcMain.handle("contacts:load", () => readContacts());
+ipcMain.handle("contacts:save", (_e, list) => writeContacts(list));
 
 ipcMain.handle("logo:pick", async () => {
   const res = await dialog.showOpenDialog({

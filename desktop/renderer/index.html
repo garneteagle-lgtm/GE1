@@ -12,7 +12,10 @@
       <aside class="panel">
         <div class="panel-head">
           <h1>Letterhead</h1>
-          <button id="btn-settings" class="btn btn-ghost" type="button">Edit letterhead</button>
+          <div class="head-actions">
+            <button id="btn-contacts" class="btn btn-ghost" type="button">Contacts</button>
+            <button id="btn-settings" class="btn btn-ghost" type="button">Edit letterhead</button>
+          </div>
         </div>
 
         <!-- Letter fields -->
@@ -34,10 +37,27 @@
             </datalist>
           </label>
 
-          <label class="field">
-            <span class="label">Recipient (name &amp; address)</span>
-            <textarea id="f-recipient" class="input area" rows="3" placeholder="John Smith&#10;456 Oak Avenue&#10;West Palm Beach, FL 33401"></textarea>
-          </label>
+          <div class="field">
+            <span class="label">Recipient name</span>
+            <div class="autocomplete">
+              <input
+                id="f-recipient-name"
+                class="input"
+                autocomplete="off"
+                placeholder="Start typing to find a saved contact…"
+              />
+              <div id="recipient-suggest" class="suggest hidden"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Recipient address</span>
+            <textarea id="f-recipient-address" class="input area" rows="3" placeholder="456 Oak Avenue&#10;West Palm Beach, FL 33401"></textarea>
+            <div class="recip-actions">
+              <button id="btn-save-contact" class="btn btn-ghost small" type="button">＋ Save as contact</button>
+              <span id="contact-status" class="status"></span>
+            </div>
+          </div>
 
           <label class="field">
             <span class="label">Re:</span>
@@ -49,10 +69,13 @@
             <input id="f-salutation" class="input" placeholder="Auto: Dear [recipient]," />
           </label>
 
-          <label class="field">
-            <span class="label">Letter body — paste your text here</span>
-            <textarea id="f-body" class="input area mono" rows="10" placeholder="Paste or type the letter text. Leave a blank line between paragraphs."></textarea>
-          </label>
+          <div class="field">
+            <div class="field-head">
+              <span class="label">Letter body — paste to auto-format</span>
+              <button id="btn-reformat" class="btn btn-ghost small" type="button">Reformat</button>
+            </div>
+            <textarea id="f-body" class="input area mono" rows="10" placeholder="Paste your text — it's auto-formatted into indented paragraphs. Press Tab to indent."></textarea>
+          </div>
 
           <div class="row">
             <label class="field">
@@ -141,6 +164,30 @@
           <div class="actions">
             <button id="btn-save-settings" class="btn btn-primary" type="button">Save letterhead</button>
             <button id="btn-cancel-settings" class="btn btn-ghost" type="button">Back to letter</button>
+          </div>
+        </section>
+
+        <!-- Contacts -->
+        <section id="contacts-fields" class="fields hidden">
+          <p class="hint">
+            Contacts are saved on this computer. New recipients are added automatically when you
+            export a letter.
+          </p>
+
+          <div class="field">
+            <span class="label" id="contact-form-label">Add a contact</span>
+            <input id="c-name" class="input" placeholder="Full name" />
+            <textarea id="c-address" class="input area" rows="3" placeholder="Street&#10;City, ST ZIP"></textarea>
+            <div class="actions">
+              <button id="btn-add-contact" class="btn btn-primary" type="button">Add contact</button>
+              <button id="btn-contact-clear" class="btn btn-ghost" type="button">Clear</button>
+              <button id="btn-contacts-back" class="btn btn-ghost" type="button">Back to letter</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Saved contacts</span>
+            <div id="contacts-list" class="contacts-list"></div>
           </div>
         </section>
       </aside>
