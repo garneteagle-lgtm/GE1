@@ -37,9 +37,14 @@ run instead of the Releases page.
    on your computer.) You can upload a different logo here.
 3. Back on the letter screen, fill in the date, delivery line, recipient, `Re:`
    line, and salutation, then **paste the body** (blank line between paragraphs).
+   Press **Tab** in the body to indent (e.g. the first line of a paragraph).
    Optionally set `xc:` and check **Note enclosure**.
-4. Click **Export to PDF…**, **browse to the folder you want**, name the file,
-   and save. The finished PDF opens in its folder.
+4. Click **Export to PDF…** or **Export to Word…**, **browse to the folder you
+   want**, name the file, and save. The finished file opens in its folder.
+
+Letters are set in **Times New Roman**. The Word (.docx) export is fully
+editable — logo in the page header, address bar in the footer, same layout as
+the PDF.
 
 ## Build it yourself (optional)
 

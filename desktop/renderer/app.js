@@ -17,13 +17,13 @@ function escLines(s) {
     .join("<br>");
 }
 
-/** Split body text into paragraphs on blank lines. */
+/** Split body text into paragraphs on blank lines, preserving indentation. */
 function toParagraphs(text) {
   return String(text || "")
     .replace(/\r\n/g, "\n")
-    .split(/\n\s*\n/)
-    .map((p) => p.replace(/\n[ \t]+/g, "\n").trim())
-    .filter((p) => p.length > 0);
+    .split(/\n[ \t]*\n/)
+    .map((p) => p.replace(/^\n+|\n+$/g, ""))
+    .filter((p) => p.trim().length > 0);
 }
 
 function sanitizeFilename(s) {
@@ -136,7 +136,7 @@ const EXPORT_CSS = `
   html, body { margin: 0; padding: 0; background: #fff; }
   .letter-sheet {
     color: #000;
-    font-family: "Calibri", "Carlito", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Times New Roman", Times, serif;
     font-size: 12pt; line-height: 1.3;
     display: flex; flex-direction: column; min-height: 9.7in;
   }
@@ -149,7 +149,7 @@ const EXPORT_CSS = `
   .lh-recip { margin-bottom: 16px; }
   .lh-re { margin-bottom: 16px; }
   .lh-salutation { margin-bottom: 16px; }
-  .lh-para { margin: 0 0 16px; white-space: pre-wrap; }
+  .lh-para { margin: 0 0 16px; white-space: pre-wrap; tab-size: 0.5in; -moz-tab-size: 0.5in; }
   .lh-sig { text-align: center; margin-top: 24px; }
   .lh-sig-space { height: 64px; }
   .lh-notations { margin-top: 32px; }
@@ -210,26 +210,44 @@ async function saveSettingsFromForm() {
 
 // ---------- export ----------
 
+function defaultFileName(v, ext) {
+  const who = sanitizeFilename(v.recipient.split("\n")[0] || "");
+  const when = sanitizeFilename(v.date);
+  return `Letter${who ? " - " + who : ""}${when ? " - " + when : ""}.${ext}`;
+}
+
+function reportResult(res, status) {
+  if (res && res.saved) status.textContent = "Saved: " + res.path;
+  else if (res && res.canceled) status.textContent = "";
+  else status.textContent = "Export failed" + (res && res.error ? ": " + res.error : "");
+}
+
 async function exportPdf() {
   const v = currentLetterValues();
   const status = $("status");
   status.textContent = "Preparing PDF…";
-  const who = sanitizeFilename(v.recipient.split("\n")[0] || "Letter");
-  const when = sanitizeFilename(v.date);
-  const defaultFileName = `Letter${who ? " - " + who : ""}${when ? " - " + when : ""}.pdf`;
-
   try {
     const res = await window.letterhead.exportPdf({
       html: buildExportHtml(v),
-      defaultFileName,
+      defaultFileName: defaultFileName(v, "pdf"),
     });
-    if (res && res.saved) {
-      status.textContent = "Saved: " + res.path;
-    } else if (res && res.canceled) {
-      status.textContent = "";
-    } else {
-      status.textContent = "Export failed" + (res && res.error ? ": " + res.error : "");
-    }
+    reportResult(res, status);
+  } catch (err) {
+    status.textContent = "Export failed: " + err;
+  }
+}
+
+async function exportDocx() {
+  const v = currentLetterValues();
+  const status = $("status");
+  status.textContent = "Preparing Word document…";
+  try {
+    const res = await window.letterhead.exportDocx({
+      values: v,
+      settings: { ...settings, logoDataUrl: effectiveLogo() },
+      defaultFileName: defaultFileName(v, "docx"),
+    });
+    reportResult(res, status);
   } catch (err) {
     status.textContent = "Export failed: " + err;
   }
@@ -263,6 +281,22 @@ async function init() {
   $("btn-cancel-settings").addEventListener("click", () => showSettings(false));
   $("btn-save-settings").addEventListener("click", saveSettingsFromForm);
   $("btn-export").addEventListener("click", exportPdf);
+  $("btn-export-docx").addEventListener("click", exportDocx);
+
+  // Tab inserts an indent in the body instead of moving focus.
+  $("f-body").addEventListener("keydown", (e) => {
+    if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      // execCommand keeps native undo and fires an 'input' event (updates preview).
+      if (!document.execCommand("insertText", false, "\t")) {
+        const el = e.target;
+        const s = el.selectionStart;
+        el.value = el.value.slice(0, s) + "\t" + el.value.slice(el.selectionEnd);
+        el.selectionStart = el.selectionEnd = s + 1;
+        renderPreview();
+      }
+    }
+  });
 
   $("btn-logo").addEventListener("click", async () => {
     const res = await window.letterhead.pickLogo();

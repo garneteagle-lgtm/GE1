@@ -4,6 +4,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { buildLetterDocx } = require("./docx-letter");
 
 const SETTINGS_FILE = () => path.join(app.getPath("userData"), "settings.json");
 const DEFAULT_LOGO = path.join(__dirname, "assets", "logo-default.png");
@@ -147,6 +148,32 @@ ipcMain.handle("letter:export", async (_e, { html, defaultFileName }) => {
   } finally {
     pdfWin.destroy();
     fs.unlink(tmpFile, () => {});
+  }
+});
+
+/** Build a Word (.docx) version of the letter at a user-chosen location. */
+ipcMain.handle("letter:exportDocx", async (_e, { values, settings, defaultFileName }) => {
+  const stored = readSettings();
+  const startDir =
+    stored.lastExportDir && fs.existsSync(stored.lastExportDir)
+      ? stored.lastExportDir
+      : app.getPath("documents");
+
+  const save = await dialog.showSaveDialog({
+    title: "Save letter as Word document",
+    defaultPath: path.join(startDir, defaultFileName || "Letter.docx"),
+    filters: [{ name: "Word Document", extensions: ["docx"] }],
+  });
+  if (save.canceled || !save.filePath) return { canceled: true };
+
+  try {
+    const buffer = await buildLetterDocx({ values, settings });
+    fs.writeFileSync(save.filePath, buffer);
+    writeSettings({ ...stored, lastExportDir: path.dirname(save.filePath) });
+    shell.showItemInFolder(save.filePath);
+    return { saved: true, path: save.filePath };
+  } catch (err) {
+    return { saved: false, error: String(err) };
   }
 });
 

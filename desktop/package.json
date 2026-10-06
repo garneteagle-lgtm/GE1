@@ -1,6 +1,6 @@
 {
   "name": "letterhead-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Letterhead letter generator — paste text, get a PDF on your firm's letterhead.",
   "main": "main.js",
   "author": "Daniel L. Martin",
@@ -21,6 +21,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "docx-letter.js",
       "renderer/**",
       "assets/**"
     ],
@@ -37,5 +38,9 @@
       "createDesktopShortcut": true,
       "shortcutName": "Letterhead"
     }
+  },
+  "dependencies": {
+    "docx": "^9.8.1",
+    "image-size": "^2.0.4"
   }
 }
